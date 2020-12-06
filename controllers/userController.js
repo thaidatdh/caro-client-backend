@@ -54,7 +54,7 @@ exports.view = function (req, res) {
 exports.update = function (req, res) {
   User.findById(req.params.user_id, function (err, user) {
     if (err) res.send(err);
-    const decodedString = Buffer.from(req.body.data, "base64");
+    const decodedString = Buffer.from(req.body.data, "base64").toString();
     const decoded = JSON.parse(decodedString);
     user.name = decoded.name ? decoded.name : user.name;
     user.username = decoded.username ? decoded.username : user.username;
@@ -92,7 +92,7 @@ exports.delete = function (req, res) {
 };
 
 exports.signup = function (req, res) {
-  const decodedString = Buffer.from(req.body.data, "base64");
+  const decodedString = Buffer.from(req.body.data, "base64").toString();
   const decoded = JSON.parse(decodedString);
   if (!decoded.password || !decoded.username) {
     res.json({
@@ -142,10 +142,10 @@ exports.signup = function (req, res) {
   }
 };
 exports.signin = function (req, res) {
-  const decodedString = Buffer.from(req.body.data, "base64");
+  const decodedString = Buffer.from(req.body.data, "base64").toString();
   const decoded = JSON.parse(decodedString);
   User.findOne(
-    { $or: [{ email: decoded.email }, { username: decoded.email }] },
+    { $or: [{ email: decoded.username }, { username: decoded.username }] },
     function (err, user) {
       if (err) throw err;
 

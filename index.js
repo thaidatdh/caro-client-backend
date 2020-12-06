@@ -19,7 +19,7 @@ app.use(bodyParser.json());
 app.use(passport.initialize());
 
 //connect to mongoose
-const dbPath = 'mongodb+srv://caro:ptudwnc1731@caroonline.gixcz.mongodb.net/test?authSource=admin&replicaSet=atlas-13xii2-shard-0&readPreference=primary&appname=MongoDB%20Compass&ssl=true';
+const dbPath = 'mongodb+srv://caro:ptudwnc1731@caroonline.gixcz.mongodb.net/caro?authSource=admin&replicaSet=atlas-13xii2-shard-0&readPreference=primary&ssl=true';
 const options = {useNewUrlParser: true, useUnifiedTopology: true}
 const mongo = mongoose.connect(dbPath, options);
 
