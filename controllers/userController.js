@@ -3,7 +3,7 @@ let jwt = require("jsonwebtoken");
 const config = require("../passport/config");
 //Import User Model
 User = require("../models/userModel");
-
+const configs = require("../configs");
 //For index
 exports.index = function (req, res) {
   User.get(function (err, users) {
@@ -27,7 +27,7 @@ exports.add = function (req, res) {
   user.username = decoded.username ? decoded.username : user.username;
   user.password = decoded.password ? decoded.password : user.password;
   user.email = decoded.email ? decoded.email : user.email;
-  user.user_type = decoded.user_type ? decoded.user_type : user.user_type;
+  user.user_type = decoded.user_type ? decoded.user_type : configs.user_types.default;
   //Save and check error
   user.save(function (errSave) {
     if (errSave) res.json(errSave);

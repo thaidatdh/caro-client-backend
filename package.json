@@ -1,5 +1,5 @@
 {
-  "name": "caro-admin",
+  "name": "caro-client",
   "version": "1.0.0",
   "description": "NodeJS ExpressJS and MongoDB for Caro",
   "main": "index.js",
