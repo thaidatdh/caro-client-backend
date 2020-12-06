@@ -3,8 +3,12 @@ let express = require('express')
 let bodyParser = require('body-parser');
 //import mongoose
 let mongoose = require('mongoose');
+let passport = require('passport');
 let app = express();
 var cors = require("cors");
+
+//Import routes
+let apiRoutes = require("./routes")
 app.use(cors());
 //configure bodyparser to hande the post requests
 app.use(bodyParser.urlencoded({
@@ -12,6 +16,7 @@ app.use(bodyParser.urlencoded({
 }));
 
 app.use(bodyParser.json());
+app.use(passport.initialize());
 
 //connect to mongoose
 const dbPath = 'mongodb+srv://caro:ptudwnc1731@caroonline.gixcz.mongodb.net/test?authSource=admin&replicaSet=atlas-13xii2-shard-0&readPreference=primary&appname=MongoDB%20Compass&ssl=true';
@@ -36,7 +41,11 @@ let port = process.env.PORT || 8080;
 
 // Welcome message
 app.get('/', (req, res) => res.send('Welcome to Express'));
+
+//Use API routes in the App
+app.use('/api', apiRoutes)
+
 // Launch app to the specified port
 app.listen(port, function() {
-    console.log("Running on Port "+ port);
+    console.log("Running Caro on Port "+ port);
 });
