@@ -94,6 +94,10 @@ exports.delete = function (req, res) {
 exports.signup = function (req, res) {
   const decodedString = Buffer.from(req.body.data, "base64").toString();
   const decoded = JSON.parse(decodedString);
+  decoded.username = (decoded.username)? decoded.username.trim() : "";
+  decoded.password = (decoded.password)? decoded.password.trim() : "";
+  decoded.name = (decoded.name)? decoded.name.trim() : "";
+  decoded.email = (decoded.email)? decoded.email.trim() : "";
   if (!decoded.password || !decoded.username) {
     res.json({
       success: false,
@@ -111,11 +115,11 @@ exports.signup = function (req, res) {
 
       if (!user) {
         let newUser = new User({
-          name: user.name,
+          name: decoded.name,
           username: decoded.username,
           password: decoded.password,
           email: decoded.email,
-          user_type: decoded.user_type,
+          user_type: configs.user_types.default,
         });
         newUser.save(function (err) {
           if (err) {
@@ -137,7 +141,6 @@ exports.signup = function (req, res) {
           .status(400)
           .send({ success: false, message: "Username already exists." });
       }
-      send;
     });
   }
 };
