@@ -10,7 +10,7 @@ exports.index = function (req, res) {
     if (err)
       res.status(400).send({
         success: false,
-        msg: "Error",
+        message: "Error",
       });
     res.json({
       users,
@@ -97,7 +97,7 @@ exports.signup = function (req, res) {
   if (!decoded.password || !decoded.username) {
     res.json({
       success: false,
-      msg: "username and password.",
+      message: "username and password.",
     });
   } else {
     // save the user
@@ -105,7 +105,7 @@ exports.signup = function (req, res) {
       if (err) {
         return res.status(401).send({
           success: false,
-          msg: "Error when Register",
+          message: "Error when Register",
         });
       }
 
@@ -121,21 +121,21 @@ exports.signup = function (req, res) {
           if (err) {
             return res.status(400).send({
               success: false,
-              msg: "Username already exists.",
+              message: "Username already exists.",
             });
           }
           let token = jwt.sign(JSON.stringify(newUser), config.secret);
           res.status(200).send({
             success: true,
-            msg: "Successful created new user.",
-            payload: newUser,
+            message: "Successful created new user.",
+            user: newUser,
             token: token,
           });
         });
       } else {
         return res
           .status(400)
-          .send({ success: false, msg: "Username already exists." });
+          .send({ success: false, message: "Username already exists." });
       }
       send;
     });
@@ -152,7 +152,7 @@ exports.signin = function (req, res) {
       if (!user) {
         res.status(401).send({
           success: false,
-          msg: "Authentication failed. User not found.",
+          message: "Authentication failed. User not found.",
         });
       } else {
         // check if password matches
@@ -161,11 +161,11 @@ exports.signin = function (req, res) {
             // if user is found and password is right create a token
             let token = jwt.sign(JSON.stringify(user), config.secret);
             // return the information including token as JSON
-            res.json({ success: true, token: token, payload: user });
+            res.json({ success: true, token: token, user: user });
           } else {
             res.status(401).send({
               success: false,
-              msg: "Authentication failed. Wrong password.",
+              message: "Authentication failed. Wrong password.",
             });
           }
         });
