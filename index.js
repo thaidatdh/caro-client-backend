@@ -47,7 +47,7 @@ if (!db) console.log("Error connecting db");
 else console.log("DB Connected Successfully");
 
 // Server Port
-let port = process.env.PORT || 8080;
+let port = process.env.PORT || 4000;
 
 // Welcome message
 app.get("/", (req, res) => res.send("Welcome to Express"));
@@ -56,6 +56,37 @@ app.get("/", (req, res) => res.send("Welcome to Express"));
 app.use("/api", apiRoutes);
 
 // Launch app to the specified port
-app.listen(port, function () {
-  console.log("Running Caro on Port " + port);
+const server = app.listen(port);
+
+let port_socket = 4001;
+
+//Socket io
+const io = require("socket.io").listen(port_socket);
+
+//queue
+let userWaiting = [];
+let userPlaying = [];
+let interval;
+
+io.on("connection", (socket) => {
+  console.log("New Client " + socket.id);
+  socket.emit("id", socket.id);
+
+  socket.on("user", (value) => {
+    userWaiting.push({ id: socket.id, username: value.username });
+    socket.join("waiting room");
+    io.to("waiting room").emit("list-user", userWaiting);
+  });
+
+  socket.on("log", (value) => {
+    console.log(value);
+  });
+
+  //when disconnect
+  socket.on("disconnect", () => {
+    const temp = userWaiting.filter((e) => e.id !== socket.id);
+    userWaiting = temp;
+    console.log(socket.id + ": disconnect");
+    io.to("waiting room").emit("list-user", userWaiting);
+  });
 });
