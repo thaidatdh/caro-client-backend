@@ -58,10 +58,8 @@ app.use("/api", apiRoutes);
 // Launch app to the specified port
 const server = app.listen(port);
 
-let port_socket = 4001;
-
 //Socket io
-const io = require("socket.io").listen(port_socket);
+const io = require("socket.io").listen(server);
 
 //queue
 let userWaiting = [];
