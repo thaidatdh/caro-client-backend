@@ -51,14 +51,11 @@ else console.log("DB Connected Successfully");
 // Server Port
 let port = process.env.PORT || 4000;
 
-// Welcome message
-app.get("/", (req, res) => res.send("Welcome to Express"));
-
-let userRoutes = require('./routes/userRoutes');
-app.use("/api/user",userRoutes);
+let routes = require('./routes/index');
+app.use("/api", routes);
 
 //Use API routes in the App
-app.use("/api",swaggerUi.serve, swaggerUi.setup(swaggerDocument));
+app.use("/",swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
 
 // Launch app to the specified port

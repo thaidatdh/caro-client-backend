@@ -6,5 +6,7 @@ module.exports = {
   },
   user_types: {
     default: "USER",
+    default_staff: "STAFF",
+    data_staff: ["ADMIN", "STAFF"],
   },
 };

@@ -245,3 +245,93 @@ exports.signin = function (req, res) {
     }
   );
 };
+exports.adminsignin = function (req, res) {
+  const decodedString = Buffer.from(req.body.data, "base64").toString();
+  const decoded = JSON.parse(decodedString);
+  User.findOne(
+    { $or: [{ email: decoded.username }, { username: decoded.username }] },
+    function (err, user) {
+      if (err) throw err;
+
+      if (!user) {
+        res.status(401).send({
+          success: false,
+          message: "Authentication failed. User not found.",
+        });
+      } else {
+        if (!configs.user_types.data_staff.includes(user.user_type)) {
+          res.status(401).send({
+            success: false,
+            message: "Authentication failed. User is not one of staffs.",
+          });
+          return;
+        }
+        // check if password matches
+        user.comparePassword(decoded.password, function (err, isMatch) {
+          if (isMatch && !err) {
+            // if user is found and password is right create a token
+            let token = jwt.sign(JSON.stringify(user), config.secret);
+            // return the information including token as JSON
+            res.json({ success: true, token: token, user: user });
+          } else {
+            res.status(401).send({
+              success: false,
+              message: "Authentication failed. Wrong password.",
+            });
+          }
+        });
+      }
+    }
+  );
+};
+exports.addstaff = function (req, res) {
+  const decodedString = Buffer.from(req.body.data, "base64").toString();
+  const decoded = JSON.parse(decodedString);
+  if (!decoded.password || !decoded.username) {
+    res.json({
+      success: false,
+      message: "username and password.",
+    });
+  } else {
+    // save the user
+    User.findOne({ username: decoded.username }, function (err, user) {
+      if (err) {
+        return res.status(401).send({
+          success: false,
+          message: "Error when Register",
+        });
+      }
+
+      if (!user) {
+        let newUser = new User({
+          name: user.name,
+          username: decoded.username,
+          password: decoded.password,
+          email: decoded.email,
+          name: decoded.name,
+          user_type: decoded.user_type ? decoded.user_type : configs.user_types.default_staff,
+        });
+        newUser.save(function (err) {
+          if (err) {
+            return res.status(400).send({
+              success: false,
+              message: "Username already exists.",
+            });
+          }
+          let token = jwt.sign(JSON.stringify(newUser), config.secret);
+          res.status(200).send({
+            success: true,
+            message: "Successful created new user.",
+            user: newUser,
+            token: token,
+          });
+        });
+      } else {
+        return res
+          .status(400)
+          .send({ success: false, message: "Username already exists." });
+      }
+      send;
+    });
+  }
+};
