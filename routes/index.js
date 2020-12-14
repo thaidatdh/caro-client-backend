@@ -20,7 +20,7 @@ router.get("/admin", function (req, res) {
   });
 });
 let adminUserRoutes = require('./admin/userRoutes');
-router.use("admin/user", adminUserRoutes);
+router.use("/admin/user", adminUserRoutes);
 
 //Export API routes
 module.exports = router;
