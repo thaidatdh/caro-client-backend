@@ -7,8 +7,10 @@ let passport = require("passport");
 let app = express();
 var cors = require("cors");
 const configs = require("./configs");
-//Import routes
-let apiRoutes = require("./routes");
+const swaggerUi = require("swagger-ui-express");
+const swaggerDocument = require("./swagger.json");
+
+
 app.use(cors());
 //configure bodyparser to hande the post requests
 app.use(
@@ -52,8 +54,12 @@ let port = process.env.PORT || 4000;
 // Welcome message
 app.get("/", (req, res) => res.send("Welcome to Express"));
 
+let userRoutes = require('./routes/userRoutes');
+app.use("/api/user",userRoutes);
+
 //Use API routes in the App
-app.use("/api", apiRoutes);
+app.use("/api",swaggerUi.serve, swaggerUi.setup(swaggerDocument));
+
 
 // Launch app to the specified port
 const server = app.listen(port);

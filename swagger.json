@@ -1,0 +1,535 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "description": "This is a api for final project of advanced website development courses [HCMUS - Ho Chi Minh University of Science]",
+    "version": "1.0.0",
+    "title": "Swagger Noughts and Crosses Online",
+    "contact": {
+      "email": "hungdan123456@gmail.com"
+    }
+  },
+  "host": "localhost:4000",
+  "basePath": "/api",
+  "tags": [
+    {
+      "name": "User"
+    }
+  ],
+  "schemes": ["http"],
+  "paths": {
+    "/user/login": {
+      "post": {
+        "tags": ["User"],
+        "summary": "Logs user into the system",
+        "description": "",
+        "operationId": "loginUser",
+        "produces": ["application/json"],
+        "parameters": [
+          {
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "description": "Logs user into the system.",
+            "schema": {
+              "type": "object",
+              "required": ["userName"],
+              "properties": {
+                "username": {
+                  "type": "string",
+                  "example": "staff1"
+                },
+                "password": {
+                  "type": "string",
+                  "example": "hello"
+                }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Login",
+            "schema": {
+              "properties": {
+                "success": {
+                  "type": "boolean"
+                },
+                "token": {
+                  "type": "string"
+                },
+                "user": {
+                  "$ref": "#/definitions/User"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "When data cannot be process",
+            "schema": {
+              "properties": {
+                "success": {
+                  "type": "boolean",
+                  "example": false
+                },
+                "errors": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "msg": {
+                        "type": "string"
+                      },
+                      "param": {
+                        "type": "string"
+                      }
+                    },
+                    "example": [
+                      {
+                        "msg": "The username address that you've entered doesn't match any account.",
+                        "param": "emailNotRegistered"
+                      },
+                      {
+                        "msg": "Email or password is not correct",
+                        "param": "emailPassword"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity, the data is not valid",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "success": {
+                  "type": "boolean",
+                  "example": false
+                },
+                "errors": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "value": {
+                        "type": "string"
+                      },
+                      "msg": {
+                        "type": "string"
+                      },
+                      "param": {
+                        "type": "string"
+                      },
+                      "location": {
+                        "type": "string"
+                      }
+                    },
+                    "example": [
+                      {
+                        "value": "hello",
+                        "msg": "Password must be at least 8 chars long",
+                        "param": "password",
+                        "location": "body"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "When got server exception",
+            "schema": {
+              "type": "string",
+              "example": "Internal server error"
+            }
+          }
+        }
+      }
+    },
+    "/user/signup": {
+      "post": {
+        "tags": ["User"],
+        "summary": "Create new user into the system",
+        "description": "",
+        "produces": ["application/json"],
+        "parameters": [
+          {
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "description": "Logs user into the system.",
+            "schema": {
+              "type": "object",
+              "required": ["userName"],
+              "properties": {
+                "username": {
+                  "type": "string",
+                  "example": "staff1"
+                },
+                "password": {
+                  "type": "string",
+                  "example": "hello"
+                },
+                "email": {
+                  "type": "string",
+                  "example": "example@gmail.com"
+                },
+                "name": {
+                  "type": "string",
+                  "example": "example"
+                }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Login",
+            "schema": {
+              "properties": {
+                "success": {
+                  "type": "boolean"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "When data cannot be process",
+            "schema": {
+              "properties": {
+                "success": {
+                  "type": "boolean",
+                  "example": false
+                },
+                "errors": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "msg": {
+                        "type": "string"
+                      },
+                      "param": {
+                        "type": "string"
+                      }
+                    },
+                    "example": [
+                      {
+                        "msg": "Username already exists.",
+                        "param": "usernameRegistered"
+                      },
+                      {
+                        "msg": "Email or password is not correct",
+                        "param": "emailPassword"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity, the data is not valid",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "success": {
+                  "type": "boolean",
+                  "example": false
+                },
+                "errors": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "value": {
+                        "type": "string"
+                      },
+                      "msg": {
+                        "type": "string"
+                      },
+                      "param": {
+                        "type": "string"
+                      },
+                      "location": {
+                        "type": "string"
+                      }
+                    },
+                    "example": [
+                      {
+                        "value": "hello",
+                        "msg": "Password must be at least 8 chars long",
+                        "param": "password",
+                        "location": "body"
+                      },
+                      {
+                        "value": "example@gmail.com",
+                        "msg": "User email is invalid",
+                        "param": "email",
+                        "location": "body"
+                      },
+                      {
+                        "value": "",
+                        "msg": "Username is required",
+                        "param": "username",
+                        "location": "body"
+                      },
+                      {
+                        "value": "",
+                        "msg": "Password is required",
+                        "param": "password",
+                        "location": "body"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "When got server exception",
+            "schema": {
+              "type": "string",
+              "example": "Internal server error"
+            }
+          }
+        }
+      }
+    },
+    "/user/me": {
+      "get": {
+        "tags": ["User"],
+        "summary": "Get user by user name",
+        "description": "",
+        "operationId": "getUserByName",
+        "security": [
+          {
+            "Bearer": []
+          }
+        ],
+        "produces": ["application/json"],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "schema": {
+              "properties": {
+                "success": {
+                  "type": "boolean"
+                },
+                "user": {
+                  "$ref": "#/definitions/User"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {
+              "type": "string",
+              "example": "Unauthorized"
+            }
+          },
+          "500": {
+            "description": "When got server exception",
+            "schema": {
+              "type": "string",
+              "example": "Internal server error"
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": ["User"],
+        "summary": "Updated user",
+        "description": "This can only be done by the logged in user.",
+        "operationId": "updateUser",
+        "produces": ["application/json"],
+        "security": [
+          {
+            "Bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "body",
+            "name": "body",
+            "description": "Updated user object",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "email": {
+                  "type": "string",
+                  "example": "mail@gmail.com"
+                },
+                "name": {
+                  "type": "string",
+                  "example": "example"
+                }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "schema": {
+              "properties": {
+                "success": {
+                  "type": "boolean"
+                },
+                "user": {
+                  "$ref": "#/definitions/User"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {
+              "type": "string",
+              "example": "Unauthorized"
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity, the data is not valid",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "success": {
+                  "type": "boolean",
+                  "example": false
+                },
+                "errors": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "value": {
+                        "type": "string"
+                      },
+                      "msg": {
+                        "type": "string"
+                      },
+                      "param": {
+                        "type": "string"
+                      },
+                      "location": {
+                        "type": "string"
+                      }
+                    },
+                    "example": [
+                      {
+                        "value": "example@gmail.com",
+                        "msg": "User email is invalid",
+                        "param": "email",
+                        "location": "body"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "When got server exception",
+            "schema": {
+              "type": "string",
+              "example": "Internal server error"
+            }
+          }
+        }
+      }
+    }
+  },
+  "securityDefinitions": {
+    "Bearer": {
+      "type": "apiKey",
+      "name": "Authorization",
+      "in": "header"
+    }
+  },
+  "definitions": {
+    "User": {
+      "type": "object",
+      "properties": {
+        "_id": {
+          "type": "string",
+          "example": "string"
+        },
+        "username": {
+          "type": "string",
+          "example": "staff1"
+        },
+        "name": {
+          "type": "string",
+          "example": "example"
+        },
+        "email": {
+          "type": "string",
+          "example": "example@gmail.com"
+        },
+        "match": {
+          "type": "integer",
+          "example": 0
+        },
+        "won": {
+          "type": "integer",
+          "example": 0
+        },
+        "total_time": {
+          "type": "integer",
+          "example": 0
+        },
+        "min_time": {
+          "type": "integer",
+          "example": 0
+        },
+        "create_at": {
+          "type": "string",
+          "format": "date-time",
+          "example": "2017-07-21T17:32:28Z"
+        },
+        "user_type": {
+          "type": "string",
+          "description": "User type [ADMIN,STAFF,USER]",
+          "example": "STAFF"
+        }
+      }
+    },
+    "ValidatorErrorItem": {
+      "type": "object",
+      "properties": {
+        "value": {
+          "type": "string",
+          "description": "The value got on request"
+        },
+        "msg": {
+          "type": "string",
+          "description": "The error message"
+        },
+        "param": {
+          "type": "string",
+          "description": "The key of value"
+        },
+        "location": {
+          "type": "string",
+          "description": "The location of value"
+        }
+      }
+    },
+    "ValidatorError": {
+      "type": "object",
+      "properties": {
+        "errors": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/ValidatorErrorItem"
+          }
+        }
+      }
+    }
+  }
+}

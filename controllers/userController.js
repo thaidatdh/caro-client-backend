@@ -27,7 +27,9 @@ exports.add = function (req, res) {
   user.username = decoded.username ? decoded.username : user.username;
   user.password = decoded.password ? decoded.password : user.password;
   user.email = decoded.email ? decoded.email : user.email;
-  user.user_type = decoded.user_type ? decoded.user_type : configs.user_types.default;
+  user.user_type = decoded.user_type
+    ? decoded.user_type
+    : configs.user_types.default;
   //Save and check error
   user.save(function (errSave) {
     if (errSave) res.json(errSave);
@@ -92,24 +94,70 @@ exports.delete = function (req, res) {
 };
 
 exports.signup = function (req, res) {
-  const decodedString = Buffer.from(req.body.data, "base64").toString();
-  const decoded = JSON.parse(decodedString);
-  decoded.username = (decoded.username)? decoded.username.trim() : "";
-  decoded.password = (decoded.password)? decoded.password.trim() : "";
-  decoded.name = (decoded.name)? decoded.name.trim() : "";
-  decoded.email = (decoded.email)? decoded.email.trim() : "";
+  const decoded = {};
+  decoded.username = req.body.username ? req.body.username.trim() : "";
+  decoded.password = req.body.password ? req.body.password.trim() : "";
+  decoded.name = req.body.name ? req.body.name.trim() : "";
+  decoded.email = req.body.email ? req.body.email.trim() : "";
   if (!decoded.password || !decoded.username) {
-    res.json({
-      success: false,
-      message: "username and password.",
-    });
+    if (!decoded.password) {
+      return res.status(422).send({
+        success: false,
+        errors: [
+          {
+            value: "",
+            msg: "Password is required",
+            param: "password",
+            location: "body",
+          },
+        ],
+      });
+    } else {
+      return res.status(422).send({
+        success: false,
+        errors: [
+          {
+            value: "",
+            msg: "Username is required",
+            param: "username",
+            location: "body",
+          },
+        ],
+      });
+    }
   } else {
+    if (decoded.password.length < 8) {
+      return res.status(422).send({
+        success: false,
+        errors: [
+          {
+            value: decoded.password,
+            msg: "Password must be at least 8 chars long",
+            param: "password",
+            location: "body",
+          },
+        ],
+      });
+    }
+    if (!decoded.email.includes("@")) {
+      return res.status(422).send({
+        success: false,
+        errors: [
+          {
+            value: decoded.email,
+            msg: "User email is invalid",
+            param: "email",
+            location: "body",
+          },
+        ],
+      });
+    }
     // save the user
     User.findOne({ username: decoded.username }, function (err, user) {
       if (err) {
-        return res.status(401).send({
+        return res.status(500).send({
           success: false,
-          message: "Error when Register",
+          message: "Internal server error",
         });
       }
 
@@ -123,7 +171,7 @@ exports.signup = function (req, res) {
         });
         newUser.save(function (err) {
           if (err) {
-            return res.status(400).send({
+            return res.status(403).send({
               success: false,
               message: "Username already exists.",
             });
@@ -131,47 +179,68 @@ exports.signup = function (req, res) {
           let token = jwt.sign(JSON.stringify(newUser), config.secret);
           res.status(200).send({
             success: true,
-            message: "Successful created new user.",
-            user: newUser,
-            token: token,
           });
         });
       } else {
         return res
-          .status(400)
+          .status(403)
           .send({ success: false, message: "Username already exists." });
       }
     });
   }
 };
 exports.signin = function (req, res) {
-  const decodedString = Buffer.from(req.body.data, "base64").toString();
-  const decoded = JSON.parse(decodedString);
   User.findOne(
-    { $or: [{ email: decoded.username }, { username: decoded.username }] },
+    { $or: [{ email: req.body.username }, { username: req.body.username }] },
     function (err, user) {
-      if (err) throw err;
-
+      if (err) {
+        return res.status(500).send("Internal server error");
+      }
       if (!user) {
-        res.status(401).send({
+        return res.status(403).send({
           success: false,
-          message: "Authentication failed. User not found.",
+          errors: [
+            {
+              msg:
+                "The username address that you've entered doesn't match any account.",
+              param: "emailNotRegistered",
+            },
+          ],
         });
       } else {
         // check if password matches
-        user.comparePassword(decoded.password, function (err, isMatch) {
-          if (isMatch && !err) {
-            // if user is found and password is right create a token
-            let token = jwt.sign(JSON.stringify(user), config.secret);
-            // return the information including token as JSON
-            res.json({ success: true, token: token, user: user });
-          } else {
-            res.status(401).send({
-              success: false,
-              message: "Authentication failed. Wrong password.",
-            });
-          }
-        });
+        if (req.body.password.length < 8) {
+          return res.status(422).send({
+            success: false,
+            errors: [
+              {
+                value: req.body.password,
+                msg: "Password must be at least 8 chars long",
+                param: "password",
+                location: "body",
+              },
+            ],
+          });
+        } else {
+          user.comparePassword(req.body.password, function (err, isMatch) {
+            if (isMatch && !err) {
+              // if user is found and password is right create a token
+              let token = jwt.sign(JSON.stringify(user), config.secret);
+              // return the information including token as JSON
+              return res.json({ success: true, token: token, user: user });
+            } else {
+              return res.status(403).send({
+                success: false,
+                errors: [
+                  {
+                    msg: "Email or password is not correct",
+                    param: "emailPassword",
+                  },
+                ],
+              });
+            }
+          });
+        }
       }
     }
   );
