@@ -10,7 +10,6 @@ const configs = require("./configs");
 const swaggerUi = require("swagger-ui-express");
 const swaggerDocument = require("./swagger.json");
 
-
 app.use(cors());
 //configure bodyparser to hande the post requests
 app.use(
@@ -51,43 +50,17 @@ else console.log("DB Connected Successfully");
 // Server Port
 let port = process.env.PORT || 4000;
 
-let routes = require('./routes/index');
+let routes = require("./routes/index");
 app.use("/api", routes);
 
 //Use API routes in the App
-app.use("/",swaggerUi.serve, swaggerUi.setup(swaggerDocument));
-
+app.use("/", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
 // Launch app to the specified port
 const server = app.listen(port);
 
 //Socket io
 const io = require("socket.io").listen(server);
+const { socketService } = require("./service/socket");
 
-//queue
-let userWaiting = [];
-let userPlaying = [];
-let interval;
-
-io.on("connection", (socket) => {
-  console.log("New Client " + socket.id);
-  socket.emit("id", socket.id);
-
-  socket.on("user", (value) => {
-    userWaiting.push({ id: socket.id, username: value.username });
-    socket.join("waiting room");
-    io.to("waiting room").emit("list-user", userWaiting);
-  });
-
-  socket.on("log", (value) => {
-    console.log(value);
-  });
-
-  //when disconnect
-  socket.on("disconnect", () => {
-    const temp = userWaiting.filter((e) => e.id !== socket.id);
-    userWaiting = temp;
-    console.log(socket.id + ": disconnect");
-    io.to("waiting room").emit("list-user", userWaiting);
-  });
-});
+socketService(io);
