@@ -9,4 +9,5 @@ module.exports = {
     default_staff: "STAFF",
     data_staff: ["ADMIN", "STAFF"],
   },
+  frontend_link: 'http://app.data.com'
 };

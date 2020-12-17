@@ -76,7 +76,23 @@ exports.update = function (req, res) {
     });
   });
 };
-
+exports.emailValidation = function (req, res) {
+  User.findById(req.user._id, function (err, user) {
+    if (err) res.send(err);
+    user.active = req.body.active ? req.body.active : true;
+    //save and check errors
+    user.save(function (err) {
+      if (err) res.json(err);
+      // if user is found and password is right create a token
+      let token = jwt.sign(JSON.stringify(user), config.secret);
+      res.json({
+        message: "User Updated Successfully",
+        payload: user,
+        token: token,
+      });
+    });
+  });
+}
 // Delete User
 exports.delete = function (req, res) {
   User.deleteOne(
@@ -245,6 +261,7 @@ exports.signin = function (req, res) {
     }
   );
 };
+
 exports.adminsignin = function (req, res) {
   const decodedString = Buffer.from(req.body.data, "base64").toString();
   const decoded = JSON.parse(decodedString);

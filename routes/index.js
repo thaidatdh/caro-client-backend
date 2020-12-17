@@ -10,7 +10,11 @@ router.get('/', function(req, res) {
 });
 
 let userRoutes = require('./userRoutes');
+let gameRoutes = require("./gameRoutes");
+let chatRoutes = require("./chatRoutes");
 router.use('/user', userRoutes);
+router.use("/game", gameRoutes);
+router.use("/chat", chatRoutes);
 
 //Admin routes
 router.get("/admin", function (req, res) {
