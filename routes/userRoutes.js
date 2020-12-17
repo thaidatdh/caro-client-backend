@@ -15,5 +15,7 @@ router
 
 router.route("/signup").post(userController.signup);
 router.route("/login").post(userController.signin);
+router.route("/sendValidationEmail").post(userController.sendEmailValidation);
+router.route("/emailValidation").post(userController.emailValidation);
 //Export API routes
 module.exports = router;

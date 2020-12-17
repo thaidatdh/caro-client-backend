@@ -78,22 +78,43 @@ exports.update = function (req, res) {
   });
 };
 exports.emailValidation = function (req, res) {
+  jwt.verify(req.body.token, config.secret, (err, decoded) => {
+    if (err) {
+      console.log(err);
+      response.status(401).send({ message: "Access Denied" });
+    } else {
+      User.findById(decoded._id, function (err, user) {
+        if (err) res.send(err);
+        user.active = req.body.active ? req.body.active : true;
+        //save and check errors
+        user.save(function (err) {
+          if (err) res.json(err);
+          // if user is found and password is right create a token
+          let token = jwt.sign(JSON.stringify(user), config.secret);
+          res.json({
+            message: "User Updated Successfully",
+            payload: user,
+            token: token,
+          });
+        });
+      });
+    }
+  });
+};
+exports.sendEmailValidation = function (req, res) {
   User.findById(req.user._id, function (err, user) {
     if (err) res.send(err);
-    user.active = req.body.active ? req.body.active : true;
-    //save and check errors
-    user.save(function (err) {
-      if (err) res.json(err);
-      // if user is found and password is right create a token
-      let token = jwt.sign(JSON.stringify(user), config.secret);
-      res.json({
-        message: "User Updated Successfully",
-        payload: user,
-        token: token,
-      });
-    });
+    let token = jwt.sign(JSON.stringify(user), config.secret);
+    if (user.email) {
+      const mailContent =
+        "Please click this url to confirm registration at Caro:\n" +
+        configs.frontend_link +
+        "account-validation/" +
+        token;
+      mailer.sendMail(user.email, "Account validation", mailContent);
+    }
   });
-}
+};
 // Delete User
 exports.delete = function (req, res) {
   User.deleteOne(
@@ -195,8 +216,11 @@ exports.signup = function (req, res) {
           }
           let token = jwt.sign(JSON.stringify(newUser), config.secret);
           if (decoded.email) {
-            const mailContent = "Please click this url to confirm registration at Caro:\n" 
-              + configs.frontend_link + "account-validation/" + token;
+            const mailContent =
+              "Please click this url to confirm registration at Caro:\n" +
+              configs.frontend_link +
+              "account-validation/" +
+              token;
             mailer.sendMail(decoded.email, "Account validation", mailContent);
           }
           res.status(200).send({
@@ -332,7 +356,9 @@ exports.addstaff = function (req, res) {
           password: decoded.password,
           email: decoded.email,
           name: decoded.name,
-          user_type: decoded.user_type ? decoded.user_type : configs.user_types.default_staff,
+          user_type: decoded.user_type
+            ? decoded.user_type
+            : configs.user_types.default_staff,
         });
         newUser.save(function (err) {
           if (err) {
