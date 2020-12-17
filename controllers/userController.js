@@ -4,6 +4,7 @@ const config = require("../passport/config");
 //Import User Model
 User = require("../models/userModel");
 const configs = require("../configs");
+const mailer = require("../service/mailer");
 //For index
 exports.index = function (req, res) {
   User.get(function (err, users) {
@@ -193,6 +194,11 @@ exports.signup = function (req, res) {
             });
           }
           let token = jwt.sign(JSON.stringify(newUser), config.secret);
+          if (decoded.email) {
+            const mailContent = "Please click this url to confirm registration at Caro:\n" 
+              + configs.frontend_link + "account-validation/" + token;
+            mailer.sendMail(decoded.email, "Account validation", mailContent);
+          }
           res.status(200).send({
             success: true,
           });
