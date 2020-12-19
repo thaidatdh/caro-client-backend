@@ -2,8 +2,8 @@ const { json } = require("body-parser");
 let jwt = require("jsonwebtoken");
 const config = require("../passport/config");
 //Import User Model
-const mongoose = require('mongoose');
-User = require('../models/userModel');
+const mongoose = require("mongoose");
+User = require("../models/userModel");
 const configs = require("../configs");
 const mailer = require("../service/mailer");
 const Utils = require("../service/utils");
@@ -17,37 +17,6 @@ exports.index = function (req, res) {
       });
     res.json({
       users,
-    });
-  });
-};
-
-//For creating new user
-exports.add = function (req, res) {
-  const decodedString = Buffer.from(req.body.data, "base64");
-  const decoded = JSON.parse(decodedString);
-  let user = new User();
-  user.name = decoded.name ? decoded.name : user.name;
-  user.username = decoded.username ? decoded.username : user.username;
-  user.password = decoded.password ? decoded.password : user.password;
-  user.email = decoded.email ? decoded.email : user.email;
-  user.avatar = "";
-  user.win = 0;
-  user.lose = 0;
-  user.draw = 0;
-  user.trophy = 0;
-  user.rank = Utils.evaluateRank(0, 0, 0);
-  user.created_at = Date.now();
-  user.isBlocked = false;
-  user.user_type = decoded.user_type
-    ? decoded.user_type
-    : configs.user_types.default;
-  //Save and check error
-  user.save(function (errSave) {
-    if (errSave) res.json(errSave);
-    let token = jwt.sign(JSON.stringify(user), config.secret);
-    res.json({
-      payload: user,
-      token: token,
     });
   });
 };
@@ -80,6 +49,7 @@ exports.update = function (req, res) {
     user.trophy = decoded.trophy ? decoded.trophy : user.trophy;
     user.rank = Utils.evaluateRank(user.win, user.lose, user.draw);
     user.isBlocked = decoded.isBlocked ? decoded.isBlocked : user.isBlocked;
+    user.isActive = decoded.isActive ? decoded.isActive : user.isActive;
     user.user_type = decoded.user_type ? decoded.user_type : user.user_type;
     //save and check errors
     user.save(function (err) {
@@ -102,7 +72,7 @@ exports.emailValidation = function (req, res) {
     } else {
       User.findById(decoded._id, function (err, user) {
         if (err) res.send(err);
-        user.active = req.body.active ? req.body.active : true;
+        user.isActive = req.body.isActive ? req.body.isActive : true;
         //save and check errors
         user.save(function (err) {
           if (err) res.json(err);
@@ -119,7 +89,7 @@ exports.emailValidation = function (req, res) {
   });
 };
 exports.sendEmailValidation = function (req, res) {
-  User.findById(req.user._id, function (err, user) {
+  User.findOne({ email: req.body.email }, function (err, user) {
     if (err) res.send(err);
     let token = jwt.sign(JSON.stringify(user), config.secret);
     if (user.email) {
@@ -129,6 +99,20 @@ exports.sendEmailValidation = function (req, res) {
         "account-validation/" +
         token;
       mailer.sendMail(user.email, "Account validation", mailContent);
+    }
+  });
+};
+exports.sendEmailResetPassword = function (req, res) {
+  User.findOne({ email: req.body.email }, function (err, user) {
+    if (err) res.send(err);
+    let token = jwt.sign(JSON.stringify(user), config.secret);
+    if (user.email) {
+      const mailContent =
+        "Please click this url to reset password at Caro:\n" +
+        configs.frontend_link +
+        "reset-password/" +
+        token;
+      mailer.sendMail(user.email, "Account Reset Password", mailContent);
     }
   });
 };
@@ -223,13 +207,7 @@ exports.signup = function (req, res) {
           username: decoded.username,
           password: decoded.password,
           email: decoded.email,
-          avatar: "",
-          win: 0,
-          lose: 0,
-          draw: 0,
-          trophy: 0,
           rank: Utils.evaluateRank(0, 0, 0),
-          isBlocked: false,
           user_type: configs.user_types.default,
         });
         newUser.save(function (err) {
@@ -250,7 +228,8 @@ exports.signup = function (req, res) {
           }
           res.status(200).send({
             success: true,
-            message: "Create account success"
+            message:
+              "Register successfully. Please confirm your email to login.",
           });
         });
       } else {
@@ -294,6 +273,18 @@ exports.signin = async function (req, res) {
             ],
           });
         } else {
+          if (!user.isActive) {
+            return res.status(403).send({
+              success: false,
+              errors: [
+                {
+                  msg:
+                    "Email not confirmed. Please confirm your email.",
+                  param: "emailNotConfirmed",
+                },
+              ],
+            });
+          }
           user.comparePassword(req.body.password, function (err, isMatch) {
             if (isMatch && !err) {
               // if user is found and password is right create a token
@@ -317,14 +308,16 @@ exports.signin = async function (req, res) {
     }
   );
 };
-
+//Admin
 exports.adminsignin = function (req, res) {
   const decodedString = Buffer.from(req.body.data, "base64").toString();
   const decoded = JSON.parse(decodedString);
   User.findOne(
     { $or: [{ email: decoded.username }, { username: decoded.username }] },
     function (err, user) {
-      if (err) throw err;
+      if (err) {
+        return res.status(500).send("Internal server error");
+      }
 
       if (!user) {
         res.status(401).send({
@@ -336,6 +329,13 @@ exports.adminsignin = function (req, res) {
           res.status(401).send({
             success: false,
             message: "Authentication failed. User is not one of staffs.",
+          });
+          return;
+        }
+        if (user.isBlocked) {
+          res.status(401).send({
+            success: false,
+            message: user.username + " is blocked.",
           });
           return;
         }
@@ -363,7 +363,7 @@ exports.addstaff = function (req, res) {
   if (!decoded.password || !decoded.username) {
     res.json({
       success: false,
-      message: "username and password.",
+      message: "Username and Password required.",
     });
   } else {
     // save the user
@@ -371,7 +371,7 @@ exports.addstaff = function (req, res) {
       if (err) {
         return res.status(401).send({
           success: false,
-          message: "Error when Register",
+          message: "Internal server error",
         });
       }
 
@@ -383,6 +383,7 @@ exports.addstaff = function (req, res) {
           email: decoded.email,
           name: decoded.name,
           isBlocked: false,
+          isActive: true,
           user_type: decoded.user_type
             ? decoded.user_type
             : configs.user_types.default_staff,

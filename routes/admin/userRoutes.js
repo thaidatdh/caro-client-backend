@@ -5,6 +5,6 @@ let userController = require('../../controllers/userController');
 
 // Admin User routes
 router.route("/login").post(userController.adminsignin);
-router.route("/").post(verifyToken, userController.addstaff);
+router.route("/").post(verifyToken.verifyAdmin, userController.addstaff);
 //Export API routes
 module.exports = router;

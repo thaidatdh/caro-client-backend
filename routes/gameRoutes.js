@@ -4,14 +4,17 @@ const verifyToken = require("../middlewares/verifyToken");
 let gameController = require("../controllers/gameController");
 
 // User routes
-router.route("/").get(gameController.index).post(gameController.add);
+router
+  .route("/")
+  .get(verifyToken.verifyAdmin, gameController.index)
+  .post(verifyToken.verifyUser, gameController.add);
 
 router
   .route("/:game_id")
-  .get(gameController.view)
-  .patch(verifyToken, gameController.update)
-  .put(verifyToken, gameController.update)
-  .delete(verifyToken, gameController.delete);
+  .get(verifyToken.verifyUser, gameController.view)
+  .patch(verifyToken.verifyUser, gameController.update)
+  .put(verifyToken.verifyUser, gameController.update)
+  .delete(verifyToken.verifyUser, gameController.delete);
   
 //Export API routes
 module.exports = router;

@@ -4,14 +4,17 @@ const verifyToken = require("../middlewares/verifyToken");
 let chatController = require("../controllers/chatController");
 
 // User routes
-router.route("/").get(chatController.index).post(chatController.add);
+router
+  .route("/")
+  .get(verifyToken.verifyAdmin, chatController.index)
+  .post(erifyToken.verifyUser, chatController.add);
 
 router
   .route("/:chat_id")
-  .get(chatController.view)
-  .patch(verifyToken, chatController.update)
-  .put(verifyToken, chatController.update)
-  .delete(verifyToken, chatController.delete);
+  .get(verifyToken.verifyUser, chatController.view)
+  .patch(verifyToken.verifyUser, chatController.update)
+  .put(verifyToken.verifyUser, chatController.update)
+  .delete(verifyToken.verifyUser, chatController.delete);
   
 //Export API routes
 module.exports = router;
