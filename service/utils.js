@@ -160,10 +160,13 @@ const calculateWinner = (player, row, col, squares) => {
   };
 
 const evaluateRank = (win, lose, draw) => {
-  return (win >= 300)? configs[3] :
-         (win >= 200)? configs[2] :
-         (win >= 100)? configs[1] :
-         configs[0]
+  return win >= 300
+    ? configs.rank.data[3]
+    : win >= 200
+    ? configs.rank.data[2]
+    : win >= 100
+    ? configs.rank.data[1]
+    : configs.rank.data[0];
 }
 module.exports = {
     boardSize,

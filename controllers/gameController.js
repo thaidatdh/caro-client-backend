@@ -20,11 +20,15 @@ exports.index = function (req, res) {
 //For creating new game
 exports.add = function (req, res) {
   let game = new Game();
-  game.user_1_id = req.body.user_1_id ? req.body.user_1_id : game.user_1_id;
-  game.user_2_id = req.body.user_2_id ? req.body.user_2_id : game.user_2_id;
-  game.history = req.body.history ? req.body.history : game.history;
-  game.isEnded = req.body.isEnded ? req.body.isEnded : game.isEnded;
+  game.player1ID = req.body.player1ID ? req.body.player1ID : game.player1ID;
+  game.player2ID = req.body.player2ID ? req.body.player2ID : game.player2ID;
+  game.totalX = req.body.totalX ? req.body.totalX : game.totalX;
+  game.totalY = req.body.totalY ? req.body.totalY : game.totalY;
   game.winner = req.body.winner ? req.body.winner : game.winner;
+  game.totalTime = req.body.totalTime ? req.body.totalTime : game.totalTime;
+  game.trophyTransferred = req.body.trophyTransferred
+    ? req.body.trophyTransferred
+    : game.trophyTransferred;
   //Save and check error
   game.save(function (err) {
     if (err) res.json(err);
@@ -57,11 +61,15 @@ exports.view = function (req, res) {
 exports.update = function (req, res) {
   Game.findById(req.params.game_id, function (err, game) {
     if (err) res.send(err);
-    game.user_1_id = req.body.user_1_id ? req.body.user_1_id : game.user_1_id;
-    game.user_2_id = req.body.user_2_id ? req.body.user_2_id : game.user_2_id;
-    game.history = req.body.history ? req.body.history : game.history;
-    game.isEnded = req.body.isEnded ? req.body.isEnded : game.isEnded;
-    game.winner = req.body.winner ? req.body.winner : game.winner;
+  game.player1ID = req.body.player1ID ? req.body.player1ID : game.player1ID;
+  game.player2ID = req.body.player2ID ? req.body.player2ID : game.player2ID;
+  game.totalX = req.body.totalX ? req.body.totalX : game.totalX;
+  game.totalY = req.body.totalY ? req.body.totalY : game.totalY;
+  game.winner = req.body.winner ? req.body.winner : game.winner;
+  game.totalTime = req.body.totalTime ? req.body.totalTime : game.totalTime;
+  game.trophyTransferred = req.body.trophyTransferred
+    ? req.body.trophyTransferred
+    : game.trophyTransferred;
 
     //save and check errors
     game.save(function (err) {

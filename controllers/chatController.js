@@ -20,9 +20,13 @@ exports.index = function (req, res) {
 //For creating new chat
 exports.add = function (req, res) {
   let chat = new Chat();
-  chat.room_id = req.body.room_id ? req.body.room_id : chat.room_id;
-  chat.user_id = req.body.user_id ? req.body.user_id : chat.user_id;
-  chat.content = req.body.content;
+  chat.gameID = req.body.gameID ? req.body.gameID : chat.gameID;
+  chat.playerID = req.body.playerID ? req.body.playerID : chat.playerID;
+  chat.number = req.body.number ? req.body.number : chat.number;
+  chat.type = req.body.type ? req.body.type : chat.type;
+  chat.row = req.body.row ? req.body.row : chat.row;
+  chat.col = req.body.col ? req.body.col : chat.col;
+  chat.time = req.body.time ? req.body.time : chat.time;
   //Save and check error
   chat.save(function (err) {
     if (err) res.json(err);
@@ -48,10 +52,13 @@ exports.view = function (req, res) {
 exports.update = function (req, res) {
   Chat.findById(req.params.chat_id, function (err, chat) {
     if (err) res.send(err);
-    chat.room_id = req.body.room_id ? req.body.room_id : chat.room_id;
-    chat.user_id = req.body.user_id ? req.body.user_id : chat.user_id;
-    chat.content = req.body.content;
-
+    chat.gameID = req.body.gameID ? req.body.gameID : chat.gameID;
+    chat.playerID = req.body.playerID ? req.body.playerID : chat.playerID;
+    chat.number = req.body.number ? req.body.number : chat.number;
+    chat.type = req.body.type ? req.body.type : chat.type;
+    chat.row = req.body.row ? req.body.row : chat.row;
+    chat.col = req.body.col ? req.body.col : chat.col;
+    chat.time = req.body.time ? req.body.time : chat.time;
     //save and check errors
     chat.save(function (err) {
       if (err) res.json(err);
