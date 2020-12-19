@@ -1,3 +1,4 @@
+const configs = require('../configs');
 const boardSize = 15;
 const RANGE = 15;
 
@@ -158,7 +159,14 @@ const calculateWinner = (player, row, col, squares) => {
     return false;
   };
 
+const evaluateRank = (win, lose, draw) => {
+  return (win >= 300)? configs[3] :
+         (win >= 200)? configs[2] :
+         (win >= 100)? configs[1] :
+         configs[0]
+}
 module.exports = {
     boardSize,
-    calculateWinner
+    calculateWinner,
+    evaluateRank
 }

@@ -2,9 +2,11 @@ const { json } = require("body-parser");
 let jwt = require("jsonwebtoken");
 const config = require("../passport/config");
 //Import User Model
-User = require("../models/userModel");
+const mongoose = require('mongoose');
+User = require('../models/userModel');
 const configs = require("../configs");
 const mailer = require("../service/mailer");
+const Utils = require("../service/utils");
 //For index
 exports.index = function (req, res) {
   User.get(function (err, users) {
@@ -28,6 +30,14 @@ exports.add = function (req, res) {
   user.username = decoded.username ? decoded.username : user.username;
   user.password = decoded.password ? decoded.password : user.password;
   user.email = decoded.email ? decoded.email : user.email;
+  user.avatar = "";
+  user.win = 0;
+  user.lose = 0;
+  user.draw = 0;
+  user.trophy = 0;
+  user.rank = Utils.evaluateRank(0, 0, 0);
+  user.created_at = Date.now();
+  user.isBlocked = false;
   user.user_type = decoded.user_type
     ? decoded.user_type
     : configs.user_types.default;
@@ -63,6 +73,13 @@ exports.update = function (req, res) {
     user.username = decoded.username ? decoded.username : user.username;
     user.password = decoded.password ? decoded.password : user.password;
     user.email = decoded.email ? decoded.email : user.email;
+    user.avatar = decoded.avatar ? decoded.avatar : user.avatar;
+    user.win = decoded.win ? decoded.win : user.win;
+    user.lose = decoded.lose ? decoded.lose : user.lose;
+    user.draw = decoded.draw ? decoded.draw : user.draw;
+    user.trophy = decoded.trophy ? decoded.trophy : user.trophy;
+    user.rank = Utils.evaluateRank(user.win, user.lose, user.draw);
+    user.isBlocked = decoded.isBlocked ? decoded.isBlocked : user.isBlocked;
     user.user_type = decoded.user_type ? decoded.user_type : user.user_type;
     //save and check errors
     user.save(function (err) {
@@ -132,11 +149,12 @@ exports.delete = function (req, res) {
 };
 
 exports.signup = function (req, res) {
-  const decoded = {};
-  decoded.username = req.body.username ? req.body.username.trim() : "";
-  decoded.password = req.body.password ? req.body.password.trim() : "";
-  decoded.name = req.body.name ? req.body.name.trim() : "";
-  decoded.email = req.body.email ? req.body.email.trim() : "";
+  const decodedString = Buffer.from(req.body.data, "base64").toString();
+  const decoded = JSON.parse(decodedString);
+  decoded.username = decoded.username ? decoded.username.trim() : "";
+  decoded.password = decoded.password ? decoded.password.trim() : "";
+  decoded.name = decoded.name ? decoded.name.trim() : "";
+  decoded.email = decoded.email ? decoded.email.trim() : "";
   if (!decoded.password || !decoded.username) {
     if (!decoded.password) {
       return res.status(422).send({
@@ -205,6 +223,13 @@ exports.signup = function (req, res) {
           username: decoded.username,
           password: decoded.password,
           email: decoded.email,
+          avatar: "",
+          win: 0,
+          lose: 0,
+          draw: 0,
+          trophy: 0,
+          rank: Utils.evaluateRank(0, 0, 0),
+          isBlocked: false,
           user_type: configs.user_types.default,
         });
         newUser.save(function (err) {
@@ -225,6 +250,7 @@ exports.signup = function (req, res) {
           }
           res.status(200).send({
             success: true,
+            message: "Create account success"
           });
         });
       } else {
@@ -235,7 +261,7 @@ exports.signup = function (req, res) {
     });
   }
 };
-exports.signin = function (req, res) {
+exports.signin = async function (req, res) {
   User.findOne(
     { $or: [{ email: req.body.username }, { username: req.body.username }] },
     function (err, user) {
@@ -356,6 +382,7 @@ exports.addstaff = function (req, res) {
           password: decoded.password,
           email: decoded.email,
           name: decoded.name,
+          isBlocked: false,
           user_type: decoded.user_type
             ? decoded.user_type
             : configs.user_types.default_staff,
