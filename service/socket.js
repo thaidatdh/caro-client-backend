@@ -1,4 +1,4 @@
-const utils = require('./utils.js');
+const utils = require("./utils.js");
 
 //queue
 // Trong waiting line là userID,  trong board.players là _id //
@@ -13,11 +13,16 @@ exports.socketService = (io) => {
   io.on("connection", (socket) => {
     console.log("New client: " + socket.id);
     socket.emit("id", socket.id);
+    socket.join(socket.id);
 
     //ADD USER TO GLOBAL ROOM
     socket.on("Global-Room", (value) => {
-      if (!userWaiting.find((user) => user._id == value.userID)){
-        userWaiting.push({ id: socket.id, _id: value.userID, username: value.username });        
+      if (!userWaiting.find((user) => user._id == value.userID)) {
+        userWaiting.push({
+          id: socket.id,
+          _id: value.userID,
+          username: value.username,
+        });
       }
       socket.join("Global-Room");
       io.to("Global-Room").emit("Global-Users", userWaiting);
@@ -38,8 +43,8 @@ exports.socketService = (io) => {
       socket.leave("Global-Room");
       io.to("Global-Room").emit("Global-Users", userWaiting);
 
-      let newRoomID = socket.id;
-      if (rooms.find((room) => room.roomID === newRoomID)){
+      let newRoomID = value.creator._id;
+      if (rooms.find((room) => room.roomID === newRoomID)) {
         const firstChar = newRoomID.charCodeAt(0);
         newRoomID = newRoomID.slice(1);
         newROomID = String.fromCharCode(firstChar + 1).concat(newRoomID);
@@ -51,8 +56,8 @@ exports.socketService = (io) => {
         creator: value.creator,
         title: value.title,
         num: 1,
-        status: 'waiting',
-        players: [{...value.creator, id: socket.id}],
+        status: "waiting",
+        players: [{ ...value.creator, id: socket.id }],
         spectators: [],
         chats: [],
         moves: [],
@@ -63,8 +68,8 @@ exports.socketService = (io) => {
           row: 0,
           total: 0,
           squares: Array(boardSize * boardSize).fill(null),
-        }
-      }
+        },
+      };
       rooms.push(newRoom);
       io.to(`${newRoomID}`).emit("Board-Response", newRoom.board);
       io.to("Global-Room").emit("Playing-Room", rooms);
@@ -77,6 +82,10 @@ exports.socketService = (io) => {
       });
       userWaiting = temp;
       socket.leave("Global-Room");
+      rooms.forEach((e) => {
+        console.log("Room: " + e.roomID);
+        io.to(e.roomID).emit("Global-Users", userWaiting);
+      });
       io.to("Global-Room").emit("Global-Users", userWaiting);
     });
 
@@ -85,19 +94,16 @@ exports.socketService = (io) => {
       // Leave global room
       userWaiting = userWaiting.filter((user) => user._id != value.player._id);
       socket.leave("Global-Room");
-      io.to("Global-Room").emit("Global-Users", userWaiting);
+      io.to(value.roomID).emit("Global-Users", userWaiting);
 
       const room = rooms.find((room) => room.roomID === value.roomID);
       room.num = room.num + 1;
-      room.players.push({...value.player, id: socket.id});
+      room.players.push({ ...value.player, id: socket.id });
 
       socket.to(value.roomID).emit("Second-Player", value.player);
       socket.join(value.roomID);
       console.log(userWaiting.filter((e) => e.id === value.roomID));
-      socket.emit(
-        "First-Player",
-        room.players[0]
-      );
+      socket.emit("First-Player", room.players[0]);
       // Board
       room.board.turn = room.players[0]._id;
       io.to(value.roomID).emit("Board-Response", room.board);
@@ -106,37 +112,45 @@ exports.socketService = (io) => {
     // MAKE A MOVE
     socket.on("Make-a-move", (value) => {
       const room = rooms.find((room) => room.roomID === value.roomID);
-      if (room){
+      if (room) {
         const board = room.board;
-        const currentPlayer = (board.total % 2 == 0)? 'X' : 'O';;
+        const currentPlayer = board.total % 2 == 0 ? "X" : "O";
         board.row = value.boardProp.row;
         board.col = value.boardProp.col;
         board.squares[value.boardProp.idx] = currentPlayer;
         board.total = board.total + 1;
-        const winner = utils.calculateWinner(currentPlayer, board.row, board.col, board.squares);
-        if (winner){
+        const winner = utils.calculateWinner(
+          currentPlayer,
+          board.row,
+          board.col,
+          board.squares
+        );
+        if (winner) {
           io.to(value.roomID).emit("Declare-Winner-Response", currentPlayer);
         } else {
           board.turn = room.players[board.total % 2]._id;
         }
         io.to(value.roomID).emit("Board-Response", room.board);
       }
-    })
+    });
 
     //LEAVE ROOM
     socket.on("Leave-Room", (value) => {
       const temp = [];
       for (var i = 0; i < rooms.length; i++) {
         if (rooms[i].roomID === value.roomID) {
-          socket.leave(`${rooms[i].roomID}`);
           // Room owner out => close room
-          if (value.player._id === rooms[i].creator._id){
+          if (value.player._id === rooms[i].creator._id) {
             socket.to(`${rooms[i].roomID}`).emit("Close-Room", rooms[i].roomID);
           } else {
             rooms[i].num--;
-            rooms[i].players = rooms[i].players.filter((player) => player._id != value.player._id)
+            rooms[i].players = rooms[i].players.filter(
+              (player) => player._id != value.player._id
+            );
             temp.push(rooms[i]);
-            socket.to(`${rooms[i].roomID}`).emit("Leave-Room-Player", rooms[i].roomID);
+            socket
+              .to(`${rooms[i].roomID}`)
+              .emit("Leave-Room-Player", { player: socket.id });
           }
         } else {
           temp.push(rooms[i]);
@@ -145,9 +159,20 @@ exports.socketService = (io) => {
       rooms = temp;
       io.to("Global-Room").emit("Playing-Room", rooms);
       // Join global room
-      userWaiting.push({ id: socket.id, _id: value.player._id, username: value.player.username });
+      userWaiting.push({
+        id: socket.id,
+        _id: value.player._id,
+        username: value.player.username,
+      });
+      socket.to(`${value.roomID}`).emit("Global-Users", userWaiting);
+      socket.leave(`${value.roomID}`);
       socket.join("Global-Room");
       io.to("Global-Room").emit("Global-Users", userWaiting);
+    });
+
+    //INVATE USER
+    socket.on("Invite-Room", (value) => {
+      io.to(value.socketID).emit("Invite-Room-Response", value.room);
     });
 
     //ROOM CHAT
@@ -166,4 +191,3 @@ exports.socketService = (io) => {
     });
   });
 };
-

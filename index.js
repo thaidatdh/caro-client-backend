@@ -6,7 +6,7 @@ let mongoose = require("mongoose");
 let passport = require("passport");
 let app = express();
 var cors = require("cors");
-require('./database/db');
+require("./database/db");
 const configs = require("./configs");
 const swaggerUi = require("swagger-ui-express");
 const swaggerDocument = require("./swagger.json");
