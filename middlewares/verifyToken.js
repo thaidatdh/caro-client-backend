@@ -1,7 +1,7 @@
 const jwt = require("jsonwebtoken");
 const config = require("../passport/config");
 const constants = require("../configs");
-module.verifyUser = (request, response, next) => {
+exports.verifyUser = (request, response, next) => {
   let token = request.header("Authorization");
   console.log(token);
   if (!token) return response.status(401).send("Access Denied");
@@ -21,7 +21,24 @@ module.verifyUser = (request, response, next) => {
     return response.status(400).send({ message: "Invalid Token" });
   }
 };
-module.verifyAdmin = (request, response, next) => {
+exports.verifyUserExist = (request, response, next) => {
+  let token = request.header("Authorization");
+  if (!token) return response.status(401).send("Access Denied");
+  token = token.replace("Bearer ", "");
+  try {
+    jwt.verify(token, config.secret, (err, decoded) => {
+      if (err) {
+        response.status(401).send({ message: "Access Denied" });
+      } else {
+        request.user = decoded;
+        next();
+      }
+    });
+  } catch (err) {
+    return response.status(400).send({ message: "Invalid Token" });
+  }
+};
+exports.verifyAdmin = (request, response, next) => {
   let token = request.header("Authorization");
   console.log(token);
   if (!token) return response.status(401).send("Access Denied");

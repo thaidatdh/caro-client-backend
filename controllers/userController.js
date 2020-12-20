@@ -64,28 +64,37 @@ exports.update = function (req, res) {
     });
   });
 };
-exports.emailValidation = function (req, res) {
-  jwt.verify(req.body.token, config.secret, (err, decoded) => {
-    if (err) {
-      console.log(err);
-      response.status(401).send({ message: "Access Denied" });
-    } else {
-      User.findById(decoded._id, function (err, user) {
-        if (err) res.send(err);
-        user.isActive = req.body.isActive ? req.body.isActive : true;
-        //save and check errors
-        user.save(function (err) {
-          if (err) res.json(err);
-          // if user is found and password is right create a token
-          let token = jwt.sign(JSON.stringify(user), config.secret);
-          res.json({
-            message: "User Updated Successfully",
-            payload: user,
-            token: token,
-          });
-        });
+exports.resetPassword = function (req, res) {
+  User.findById(req.user._id, function (err, user) {
+    if (err) res.send(err);
+    user.password = req.body.password ? req.body.password : user.password;
+    //save and check errors
+    user.save(function (err) {
+      if (err) res.json(err);
+      // if user is found and password is right create a token
+      let token = jwt.sign(JSON.stringify(user), config.secret);
+      res.json({
+        message: "Password Updated Successfully",
+        token: token,
       });
-    }
+    });
+  });
+};
+exports.emailValidation = function (req, res) {
+  User.findById(req.user._id, function (err, user) {
+    if (err) res.send(err);
+    user.isActive = req.body.isActive ? req.body.isActive : true;
+    //save and check errors
+    user.save(function (err) {
+      if (err) res.json(err);
+      // if user is found and password is right create a token
+      let token = jwt.sign(JSON.stringify(user), config.secret);
+      res.json({
+        message: "Account Activated Successfully",
+        payload: user,
+        token: token,
+      });
+    });
   });
 };
 exports.sendEmailValidation = function (req, res) {
@@ -98,7 +107,17 @@ exports.sendEmailValidation = function (req, res) {
         configs.frontend_link +
         "account-validation/" +
         token;
-      mailer.sendMail(user.email, "Account validation", mailContent);
+      try {
+        mailer.sendMail(user.email, "Account validation", mailContent);
+        res.json({
+          message: "Account Activated Successfully",
+          token: token,
+        });
+      } catch (err) {
+        res.json({
+          message: "Mail Server Error!",
+        });
+      }
     }
   });
 };
@@ -112,7 +131,16 @@ exports.sendEmailResetPassword = function (req, res) {
         configs.frontend_link +
         "reset-password/" +
         token;
-      mailer.sendMail(user.email, "Account Reset Password", mailContent);
+      try {
+        mailer.sendMail(user.email, "Account Reset Password", mailContent);
+        res.json({
+          message: "Sent reset password email.",
+        });
+      } catch (err) {
+        res.json({
+          message: "Mail Server Error!",
+        });
+      }
     }
   });
 };
@@ -278,8 +306,7 @@ exports.signin = async function (req, res) {
               success: false,
               errors: [
                 {
-                  msg:
-                    "Email not confirmed. Please confirm your email.",
+                  msg: "Email not confirmed. Please confirm your email.",
                   param: "emailNotConfirmed",
                 },
               ],

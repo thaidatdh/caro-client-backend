@@ -7,7 +7,7 @@ let chatController = require("../controllers/chatController");
 router
   .route("/")
   .get(verifyToken.verifyAdmin, chatController.index)
-  .post(erifyToken.verifyUser, chatController.add);
+  .post(verifyToken.verifyUser, chatController.add);
 
 router
   .route("/:chat_id")
