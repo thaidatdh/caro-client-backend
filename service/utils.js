@@ -1,6 +1,6 @@
 const configs = require('../configs');
-const boardSize = 15;
-const RANGE = 15;
+const boardSize = 20;
+const RANGE = 20;
 
 const calculateWinner = (player, row, col, squares) => {
     row--;

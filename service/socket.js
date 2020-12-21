@@ -53,10 +53,10 @@ exports.socketService = (io) => {
       console.log(`Room ${newRoomID} created`);
       const newRoom = {
         roomID: newRoomID,
-        creator: value.creator,
+        creator: {...value.creator, id: socket.id},
         title: value.title,
         num: 1,
-        status: "waiting",
+        status: "Waiting",
         players: [{ ...value.creator, id: socket.id }],
         spectators: [],
         chats: [],
@@ -134,6 +134,14 @@ exports.socketService = (io) => {
       }
     });
 
+    // WITH DRAW
+    socket.on("Withdraw", (value) => {
+      const room = rooms.find((room) => room.roomID = value.roomID);
+      if (room){
+        io.to(value.roomID).emit("Declare-Winner-Response", (value.player._id === room.players[0]._id)? 'O' : 'X');
+      }
+    })
+
     //LEAVE ROOM
     socket.on("Leave-Room", (value) => {
       const temp = [];
@@ -164,7 +172,7 @@ exports.socketService = (io) => {
         _id: value.player._id,
         username: value.player.username,
       });
-      socket.to(`${value.roomID}`).emit("Global-Users", userWaiting);
+      //socket.to(`${value.roomID}`).emit("Global-Users", userWaiting);
       socket.leave(`${value.roomID}`);
       socket.join("Global-Room");
       io.to("Global-Room").emit("Global-Users", userWaiting);
@@ -184,10 +192,38 @@ exports.socketService = (io) => {
 
     //WHEN DISCONNECT
     socket.on("disconnect", () => {
-      const temp = userWaiting.filter((e) => e.id !== socket.id);
-      userWaiting = temp;
+      const temp1 = userWaiting.filter((e) => e.id !== socket.id);
+      const isUserInRoom = (temp1.length === userWaiting.length);
+
+      if (!isUserInRoom){
+        userWaiting = temp1;
+        io.to("Global-Room").emit("Global-Users", userWaiting);
+      } else {
+        const temp = [];
+        for (var i = 0; i < rooms.length; i++) {
+          if (rooms[i].players[0].id === socket.id || rooms[i].players[1].id === socket.id) {
+            // Room owner out => close room
+            if (socket.id === rooms[i].creator.id) {
+              socket.to(`${rooms[i].roomID}`).emit("Close-Room", rooms[i].roomID);
+              io.to("Global-Room").emit("Playing-Room", rooms);
+            } else {
+              rooms[i].num--;
+              rooms[i].players = rooms[i].players.filter(
+                (player) => player.id != socket.id
+              );
+              temp.push(rooms[i]);
+              socket
+                .to(`${rooms[i].roomID}`)
+                .emit("Leave-Room-Player", { player: socket.id });
+            }
+          } else {
+            temp.push(rooms[i]);
+          }
+        }
+        rooms = temp;
+        io.to("Global-Room").emit("Playing-Room", rooms);
+      }
       console.log("disconnect: " + socket.id);
-      io.to("Global-Room").emit("Global-Users", userWaiting);
     });
   });
 };
