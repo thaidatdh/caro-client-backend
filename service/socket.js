@@ -56,22 +56,16 @@ exports.socketService = (io) => {
         creator: {...value.creator, id: socket.id},
         title: value.title,
         num: 1,
-        status: "Waiting",
+        status: utils.roomStatus.waiting,
         players: [{ ...value.creator, id: socket.id }],
         spectators: [],
         chats: [],
         moves: [],
         // Create Board: no one's turn yet
-        board: {
-          turn: -1,
-          col: 0,
-          row: 0,
-          total: 0,
-          squares: Array(boardSize * boardSize).fill(null),
-        },
+        board: utils.createEmptyBoard(),
       };
       rooms.push(newRoom);
-      io.to(`${newRoomID}`).emit("Board-Response", newRoom.board);
+      io.to(`${newRoomID}`).emit("Room-Owner-Response", value.creator._id);
       io.to("Global-Room").emit("Playing-Room", rooms);
     });
 
@@ -106,8 +100,32 @@ exports.socketService = (io) => {
       socket.emit("First-Player", room.players[0]);
       // Board
       room.board.turn = room.players[0]._id;
-      io.to(value.roomID).emit("Board-Response", room.board);
+      io.to(`${value.roomID}`).emit("Room-Owner", room.creator._id);
+      
     });
+
+    // START GAME
+    socket.on('Start-Game', (value) => {
+      const room = rooms.find((room) => room.roomID === value.roomID);
+      if (room){
+        room.board.turn = room.players[0]._id;
+        room.status = utils.roomStatus.playing;
+        io.to(value.roomID).emit("Board-Response", room.board);
+        io.to("Global-Room").emit("Playing-Room", rooms);
+      }
+    })
+
+    // RESTART GAME
+    socket.on('Restart-Game', (value) => {
+      const room = rooms.find((room) => room.roomID === value.roomID);
+      if (room){
+        room.board = utils.createEmptyBoard();
+        room.board.turn = room.players[0]._id;
+        room.status = utils.roomStatus.playing;
+        io.to(value.roomID).emit("Restart-Game-Response", room.board);
+        io.to("Global-Room").emit("Playing-Room", rooms);
+      }
+    })
 
     // MAKE A MOVE
     socket.on("Make-a-move", (value) => {
@@ -126,6 +144,8 @@ exports.socketService = (io) => {
           board.squares
         );
         if (winner) {
+          room.status = utils.roomStatus.waiting;
+          io.to("Global-Room").emit("Playing-Room", rooms);
           io.to(value.roomID).emit("Declare-Winner-Response", currentPlayer);
         } else {
           board.turn = room.players[board.total % 2]._id;
@@ -138,6 +158,8 @@ exports.socketService = (io) => {
     socket.on("Withdraw", (value) => {
       const room = rooms.find((room) => room.roomID = value.roomID);
       if (room){
+        room.status = utils.roomStatus.waiting;
+        io.to("Global-Room").emit("Playing-Room", rooms);
         io.to(value.roomID).emit("Declare-Winner-Response", (value.player._id === room.players[0]._id)? 'O' : 'X');
       }
     })

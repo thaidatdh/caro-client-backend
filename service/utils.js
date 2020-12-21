@@ -1,6 +1,20 @@
 const configs = require('../configs');
 const boardSize = 20;
 const RANGE = 20;
+const roomStatus = {
+  waiting: 'Waiting',
+  playing: 'Playing'
+}
+
+const createEmptyBoard = () => {
+  return {
+    turn: -1,
+    col: 0,
+    row: 0,
+    total: 0,
+    squares: Array(boardSize * boardSize).fill(null),
+  };
+}
 
 const calculateWinner = (player, row, col, squares) => {
     row--;
@@ -170,6 +184,8 @@ const evaluateRank = (win, lose, draw) => {
 }
 module.exports = {
     boardSize,
+    createEmptyBoard,
     calculateWinner,
-    evaluateRank
+    evaluateRank,
+    roomStatus
 }
