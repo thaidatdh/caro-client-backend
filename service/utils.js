@@ -8,7 +8,7 @@ const roomStatus = {
 
 const createEmptyBoard = () => {
   return {
-    turn: -1,
+    turn: 0,
     col: 0,
     row: 0,
     total: 0,

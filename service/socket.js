@@ -131,7 +131,7 @@ exports.socketService = (io) => {
     })
 
     // RESTART GAME
-    socket.on('Restart-Game', (value) => {
+    /*socket.on('Restart-Game', (value) => {
       const room = rooms.find((room) => room.roomID === value.roomID);
       if (room){
         // Player 1 Ready
@@ -154,7 +154,7 @@ exports.socketService = (io) => {
           io.to("Global-Room").emit("Playing-Room", rooms);
         }
       }
-    })
+    })*/
 
     // MAKE A MOVE
     socket.on("Make-a-move", (value) => {
@@ -173,6 +173,7 @@ exports.socketService = (io) => {
           board.squares
         );
         if (winner) {
+          room.board.turn = 0;
           room.status = utils.roomStatus.waiting;
           if (room.players[0]) {
             room.players[0].isReady = false;
@@ -189,10 +190,11 @@ exports.socketService = (io) => {
       }
     });
 
-    // WITH DRAW
+    // WITHDRAW
     socket.on("Withdraw", (value) => {
       const room = rooms.find((room) => room.roomID = value.roomID);
       if (room){
+        room.board.turn = 0;
         room.status = utils.roomStatus.waiting;
         if (room.players[0]) {
           room.players[0].isReady = false;
@@ -225,6 +227,7 @@ exports.socketService = (io) => {
           }
 
           // Declare winner
+          rooms[i].board.turn = 0;
           rooms[i].status = utils.roomStatus.waiting;
           let winner = "";
           if (rooms[i].players[0]) {
@@ -298,6 +301,7 @@ exports.socketService = (io) => {
             }
 
             // Declare winner
+            rooms[i].board.turn = 0;
             rooms[i].status = utils.roomStatus.waiting;
             let winner = "";
             if (rooms[i].players[0]) {
