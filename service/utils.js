@@ -13,6 +13,7 @@ const createEmptyBoard = () => {
     row: 0,
     total: 0,
     squares: Array(boardSize * boardSize).fill(null),
+    moves: [],
   };
 }
 

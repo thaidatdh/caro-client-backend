@@ -59,8 +59,7 @@ exports.socketService = (io) => {
         status: utils.roomStatus.waiting,
         players: [{ ...value.creator, id: socket.id, isReady: false }],
         spectators: [],
-        chats: [],
-        moves: [],
+        chats: []
         // Create Board: no one's turn yet
         //board: utils.createEmptyBoard(),
       };
@@ -166,6 +165,7 @@ exports.socketService = (io) => {
         board.col = value.boardProp.col;
         board.squares[value.boardProp.idx] = currentPlayer;
         board.total = board.total + 1;
+        board.moves.push({row: value.boardProp.row, col: value.boardProp.col});
         const winner = utils.calculateWinner(
           currentPlayer,
           board.row,
@@ -182,7 +182,7 @@ exports.socketService = (io) => {
             room.players[1].isReady = false;
           }
           io.to("Global-Room").emit("Playing-Room", rooms);
-          io.to(value.roomID).emit("Declare-Winner-Response", currentPlayer);
+          io.to(value.roomID).emit("Declare-Winner-Response", {winner: currentPlayer, winnerList: [0, 1, 2, 3, 4]});
         } else {
           board.turn = room.players[board.total % 2]._id;
         }
@@ -203,7 +203,8 @@ exports.socketService = (io) => {
           room.players[1].isReady = false;
         }
         io.to("Global-Room").emit("Playing-Room", rooms);
-        io.to(value.roomID).emit("Declare-Winner-Response", (value.player._id === room.players[0]._id)? 'O' : 'X');
+        const winner = (value.player._id === room.players[0]._id)? 'O' : 'X';
+        io.to(value.roomID).emit("Declare-Winner-Response", {winner: winner, winnerList: [0, 1, 2, 3, 4]});
       }
     })
 
@@ -238,7 +239,7 @@ exports.socketService = (io) => {
             rooms[i].players[1].isReady = false;
             winner = 'O';
           }
-          io.to(value.roomID).emit("Declare-Winner-Response", winner);
+          io.to(value.roomID).emit("Declare-Winner-Response", {winner: winner, winnerList: [0, 1, 2, 3, 4]});
         } else {
           temp.push(rooms[i]);
         }
@@ -312,7 +313,7 @@ exports.socketService = (io) => {
               rooms[i].players[1].isReady = false;
               winner = 'O';
             }
-            io.to(`${rooms[i].roomID}`).emit("Declare-Winner-Response", winner);
+            io.to(`${rooms[i].roomID}`).emit("Declare-Winner-Response", {winner: winner, winnerList: [0, 1, 2, 3, 4]});
           } else {
             temp.push(rooms[i]);
           }
