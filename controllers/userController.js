@@ -8,17 +8,33 @@ const configs = require("../configs");
 const mailer = require("../service/mailer");
 const Utils = require("../service/utils");
 //For index
-exports.index = function (req, res) {
-  User.get(function (err, users) {
-    if (err)
-      res.status(400).send({
-        success: false,
-        message: "Error",
+exports.player_index = function (req, res) {
+  User.find({ user_type: configs.user_types.default })
+    .sort({ isBlocked: 1 })
+    .exec(function (err, users) {
+      if (err)
+        res.status(400).send({
+          success: false,
+          message: "Error",
+        });
+      res.json({
+        users,
       });
-    res.json({
-      users,
     });
-  });
+};
+exports.staff_index = function (req, res) {
+  User.find({ user_type: { $in: configs.user_types.data_staff } })
+    .sort({ isBlocked: 1 })
+    .exec(function (err, users) {
+      if (err)
+        res.status(400).send({
+          success: false,
+          message: "Error",
+        });
+      res.json({
+        users,
+      });
+    });
 };
 
 // View User

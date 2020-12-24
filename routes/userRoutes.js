@@ -3,6 +3,7 @@ const verifyToken = require("../middlewares/verifyToken");
 //Import User Controller
 let userController = require("../controllers/userController");
 
+router.route("/").get(verifyToken.verifyAdmin, userController.player_index);
 router
   .route("/:user_id")
   .get(verifyToken.verifyUser, userController.view)
