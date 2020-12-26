@@ -20,9 +20,9 @@ exports.socketService = (io) => {
     console.log("New client: " + socket.id);
     socket.emit("id", socket.id);
     socket.join(socket.id);
-    Game.deleteAll();
-    Move.deleteAll();
-    Chat.deleteAll();
+    //Game.deleteAll();
+    //Move.deleteAll();
+    //Chat.deleteAll();
     //ADD USER TO GLOBAL ROOM
     socket.on("Global-Room", (value) => {
       if (!userWaiting.find((user) => user._id == value.userID)) {
