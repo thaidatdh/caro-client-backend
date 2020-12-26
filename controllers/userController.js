@@ -65,7 +65,7 @@ exports.update = function (req, res) {
     user.lose = decoded.lose ? decoded.lose : user.lose;
     user.draw = decoded.draw ? decoded.draw : user.draw;
     user.trophy = decoded.trophy ? decoded.trophy : user.trophy;
-    user.rank = Utils.evaluateRank(user.win, user.lose, user.draw);
+    user.rank = Utils.evaluateRank(user.win, user.lose, user.draw, user.trophy);
     user.isBlocked =
       decoded.isBlocked != undefined ? decoded.isBlocked : user.isBlocked;
     user.isActive =
@@ -255,7 +255,7 @@ exports.signup = function (req, res) {
           username: decoded.username,
           password: decoded.password,
           email: decoded.email,
-          rank: Utils.evaluateRank(0, 0, 0),
+          rank: Utils.evaluateRank(0, 0, 0, 0),
           user_type: configs.user_types.default,
         });
         newUser.save(function (err) {

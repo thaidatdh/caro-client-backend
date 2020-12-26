@@ -37,3 +37,27 @@ let User = module.exports = mongoose.model('User', userSchema);
 module.exports.get = function (callback, limit) {
   User.find(callback).limit(limit); 
 }
+
+module.exports.setResult = (query, option) => {
+    const obj = {};
+    if (option.win > 0){
+        obj.win = option.win;
+    }
+    if (option.draw > 0){
+        obj.draw = option.draw;
+    }
+    if (option.lose > 0){
+        obj.lose = option.lose;
+    }
+    if (option.trophy >= 0){
+        obj.trophy = option.trophy;
+    } else {
+        obj.trophy = 0;
+    }
+
+    return User.findOneAndUpdate(query, obj).exec();
+}
+
+module.exports.setRank = (query, rank) => {
+    return User.findOneAndUpdate(query, {rank: rank}).exec();
+}

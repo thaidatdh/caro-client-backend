@@ -12,8 +12,10 @@ const createEmptyBoard = () => {
     col: 0,
     row: 0,
     total: 0,
+    timeStart: Date.now(),
     squares: Array(boardSize * boardSize).fill(null),
     moves: [],
+    chats: [],  // Chats will be saved
   };
 }
 
@@ -174,19 +176,34 @@ const calculateWinner = (player, row, col, squares) => {
     return false;
   };
 
-const evaluateRank = (win, lose, draw) => {
-  return win >= 300
+const evaluateRank = (win, lose, draw, trophy) => {
+  return trophy >= 300
     ? configs.rank.data[3]
-    : win >= 200
+    : trophy >= 200
     ? configs.rank.data[2]
-    : win >= 100
+    : trophy >= 100
     ? configs.rank.data[1]
     : configs.rank.data[0];
 }
+
+const calculateTrophyTransfered = (player1, player2) => {
+  const multipler = 2;
+  const rank1Num = configs.rank.data.indexOf(player1.rank);
+  const rank2Num = configs.rank.data.indexOf(player2.rank);
+  const diff = (rank1Num != -1 && rank2Num != -1)? Math.abs(rank1Num - rank2Num) : 0;
+  switch(diff){
+    case 0:
+      return 1;
+    default:
+      return multipler * diff;
+  }
+}
+
 module.exports = {
     boardSize,
     createEmptyBoard,
     calculateWinner,
     evaluateRank,
+    calculateTrophyTransfered,
     roomStatus
 }
