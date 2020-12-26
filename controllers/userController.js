@@ -18,6 +18,7 @@ exports.player_index = function (req, res) {
           message: "Error",
         });
       res.json({
+        success: true,
         users,
       });
     });
@@ -32,6 +33,7 @@ exports.staff_index = function (req, res) {
           message: "Error",
         });
       res.json({
+        success: true,
         users,
       });
     });
@@ -64,8 +66,10 @@ exports.update = function (req, res) {
     user.draw = decoded.draw ? decoded.draw : user.draw;
     user.trophy = decoded.trophy ? decoded.trophy : user.trophy;
     user.rank = Utils.evaluateRank(user.win, user.lose, user.draw);
-    user.isBlocked = decoded.isBlocked ? decoded.isBlocked : user.isBlocked;
-    user.isActive = decoded.isActive ? decoded.isActive : user.isActive;
+    user.isBlocked =
+      decoded.isBlocked != undefined ? decoded.isBlocked : user.isBlocked;
+    user.isActive =
+      decoded.isActive != undefined ? decoded.isActive : user.isActive;
     user.user_type = decoded.user_type ? decoded.user_type : user.user_type;
     //save and check errors
     user.save(function (err) {
