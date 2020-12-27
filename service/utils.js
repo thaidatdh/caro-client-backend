@@ -16,6 +16,7 @@ const createEmptyBoard = () => {
     squares: Array(boardSize * boardSize).fill(null),
     moves: [],
     chats: [],  // Chats will be saved
+    winner: ""
   };
 }
 
@@ -186,16 +187,19 @@ const evaluateRank = (win, lose, draw, trophy) => {
     : configs.rank.data[0];
 }
 
-const calculateTrophyTransfered = (player1, player2) => {
-  const multipler = 2;
-  const rank1Num = configs.rank.data.indexOf(player1.rank);
-  const rank2Num = configs.rank.data.indexOf(player2.rank);
-  const diff = (rank1Num != -1 && rank2Num != -1)? Math.abs(rank1Num - rank2Num) : 0;
-  switch(diff){
-    case 0:
-      return 1;
-    default:
-      return multipler * diff;
+const calculateTrophyTransfered = (winner, loser) => {
+  const multipler = 3;
+  const winnerRankNum = configs.rank.data.indexOf(winner.rank);
+  const loserRankNum = configs.rank.data.indexOf(loser.rank);
+  if (winnerRankNum === -1 || loserRankNum === -1){
+    return;
+  }
+  if (winnerRankNum < loserRankNum){
+    return multipler * (loserRankNum - winnerRankNum);
+  } else if (winnerRankNum === loserRankNum){
+    return 2;
+  } else {
+    return 1;
   }
 }
 

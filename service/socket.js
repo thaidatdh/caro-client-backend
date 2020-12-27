@@ -31,7 +31,7 @@ exports.socketService = (io) => {
           _id: value.userID,
           username: value.username,
         });
-      } console.log("Global")
+      }
       socket.join("Global-Room");
       io.to("Global-Room").emit("Global-Users", userWaiting);
       // Overkill
@@ -94,7 +94,7 @@ exports.socketService = (io) => {
               (rooms[i].players[1] && rooms[i].players[1].id === socket.id)) {
 
             // Declare winner
-            if (rooms[i].board && rooms[i].board.squares.length > 0){
+            if (rooms[i].board && rooms[i].board.squares.length > 0 && !rooms[i].board.winner){
               rooms[i].board.turn = 0;
               rooms[i].status = utils.roomStatus.waiting;
               let winner = "";
@@ -110,6 +110,7 @@ exports.socketService = (io) => {
                 winner = 'O';
                 toPlayer2 = true;
               }
+              rooms[i].board.winner = winner;
               io.to(`${rooms[i].roomID}`).emit("Declare-Winner-Response", {winner: winner, winnerList: [0, 1, 2, 3, 4]});
 
               // Save Game
@@ -242,6 +243,7 @@ exports.socketService = (io) => {
         if (winner) {
           room.board.turn = 0;
           room.status = utils.roomStatus.waiting;
+          room.board.winner = currentPlayer;
           if (room.players[0]) {
             room.players[0].isReady = false;
           }
@@ -288,6 +290,7 @@ exports.socketService = (io) => {
           }
           io.to("Global-Room").emit("Playing-Room", rooms);
           const winner = (value.player._id === room.players[0]._id)? 'O' : 'X';
+          room.board.winner = winner;
           io.to(value.roomID).emit("Declare-Winner-Response", {winner: winner, winnerList: [0, 1, 2, 3, 4]});
 
           // Save Game
@@ -303,7 +306,7 @@ exports.socketService = (io) => {
       for (var i = 0; i < rooms.length; i++) {
         if (rooms[i].roomID === value.roomID) {
           // Declare winner
-          if (rooms[i].board && rooms[i].board.squares.length > 0){
+          if (rooms[i].board && rooms[i].board.squares.length > 0 && !rooms[i].board.winner){
             rooms[i].board.turn = 0;
             rooms[i].status = utils.roomStatus.waiting;
             let winner = "";
@@ -315,6 +318,7 @@ exports.socketService = (io) => {
               rooms[i].players[1].isReady = false;
               winner = 'O';
             }
+            rooms[i].board.winner = winner;
             io.to(`${rooms[i].roomID}`).emit("Declare-Winner-Response", {winner: winner, winnerList: [0, 1, 2, 3, 4]});
 
             // Save Game
@@ -388,22 +392,27 @@ exports.socketService = (io) => {
               (rooms[i].players[1] && rooms[i].players[1].id === socket.id)) {
             
             // Declare winner
-            if (rooms[i].board && rooms[i].board.squares.length > 0){
+            if (rooms[i].board && rooms[i].board.squares.length > 0 && !rooms[i].board.winner){
               rooms[i].board.turn = 0;
               rooms[i].status = utils.roomStatus.waiting;
               let winner = "";
+              let toPlayer1 = false;
+              let toPlayer2 = false;
               if (rooms[i].players[0].id !== socket.id) {
                 rooms[i].players[0].isReady = false;
                 winner = 'X';
+                toPlayer1 = true;
               }
               if (rooms[i].players[1].id !== socket.id) {
                 rooms[i].players[1].isReady = false;
                 winner = 'O';
+                toPlayer2 = true;
               }
+              rooms[i].board.winner = winner;
               io.to(`${rooms[i].roomID}`).emit("Declare-Winner-Response", {winner: winner, winnerList: [0, 1, 2, 3, 4]});
 
               // Save Game
-              await saveGame(io, rooms[i], winner);
+              await saveGame(io, rooms[i], winner, {toPlayer1: toPlayer1, toPlayer2: trtoPlayer2});
             }
 
             // Room owner out => close room
@@ -438,9 +447,14 @@ const saveGame = (io, room, winner, option) => {
   return new Promise(async (resolve, reject) => {
     io.to(room.roomID).emit("Loading-Response", true);
     try {
+      const winnerIdx = (winner === "X")? 0 : 1;
+      const loserIdx = 1 - winnerIdx;
+      const winnerU = room.players[winnerIdx];
+      const loserU = room.players[loserIdx];
+      const trophyTransferred = (winner !== "None")? utils.calculateTrophyTransfered(winnerU, loserU) : 0;
+
       const player1 = room.players[0];
       const player2 = room.players[1];
-      const trophyTransferred = utils.calculateTrophyTransfered(player1, player2);
       const newGame = await Game.add(player1._id, player2._id, {
         winner: winner,
         totalTime: Date.now() - room.board.timeStart,
@@ -455,21 +469,20 @@ const saveGame = (io, room, winner, option) => {
       ];
       // Set Stat
       if (winner !== "None"){
-        const winnerIdx = (winner === "X")? 0 : 1;
-        const loserIdx = 1 - winnerIdx;
-        const winnerU = room.players[winnerIdx];
-        const loserU = room.players[loserIdx];
         winnerU.win+= 1;
+        winnerU.trophy+= trophyTransferred;
         loserU.lose+= 1;
-        promiseAll.push(User.setResult({_id: new ObjectId(winnerU._id)}, {win: winnerU.win + 1, trophy: winnerU.trophy + trophyTransferred}));
-        promiseAll.push(User.setResult({_id: new ObjectId(loserU._id)}, {lose: loserU.lose + 1, trophy: loserU.trophy - trophyTransferred}));
+        loserU.trophy-= trophyTransferred;
+        loserU.trophy = (loserU.trophy >= 0)? loserU.trophy : 0;
+        promiseAll.push(User.setResult({_id: new ObjectId(winnerU._id)}, {win: winnerU.win, trophy: winnerU.trophy}));
+        promiseAll.push(User.setResult({_id: new ObjectId(loserU._id)}, {lose: loserU.lose, trophy: loserU.trophy}));
         // Set Rank
-        const newWinnerRank = utils.evaluateRank(winnerU.win + 1, winnerU.lose, winnerU.draw, winnerU.trophy + trophyTransferred);
+        const newWinnerRank = utils.evaluateRank(winnerU.win, winnerU.lose, winnerU.draw, winnerU.trophy);
         if (winnerU.rank !== newWinnerRank){
           winnerU.rank = newWinnerRank;
           promiseAll.push(User.setRank({_id: new ObjectId(winnerU._id)}, newWinnerRank));
         }
-        const newLoserRank = utils.evaluateRank(loserU.win, loserU.lose + 1, loserU.draw, loserU.trophy - trophyTransferred);
+        const newLoserRank = utils.evaluateRank(loserU.win, loserU.lose, loserU.draw, loserU.trophy);
         if (loserU.rank !== newLoserRank){
           loserU.rank = newLoserRank;
           promiseAll.push(User.setRank({_id: new ObjectId(loserU._id)}, newLoserRank));
@@ -477,8 +490,8 @@ const saveGame = (io, room, winner, option) => {
       } else {
         room.players[0].draw+=1;
         room.players[1].draw+=1;
-        promiseAll.push(User.setResult({_id: new ObjectId(room.players[0]._id)}, {draw: room.players[0].draw + 1}));
-        promiseAll.push(User.setResult({_id: new ObjectId(room.players[1]._id)}, {draw: room.players[1].draw + 1}));
+        promiseAll.push(User.setResult({_id: new ObjectId(room.players[0]._id)}, {draw: room.players[0].draw}));
+        promiseAll.push(User.setResult({_id: new ObjectId(room.players[1]._id)}, {draw: room.players[1].draw}));
       }
       await Promise.all(promiseAll);
       if (option.toPlayer1){
