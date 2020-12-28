@@ -11,11 +11,16 @@ exports.index = async function (req, res) {
     const games = await Game.get({}, option);
     let returnGames = games.map((game) =>
       Object.assign(
-        { player1: game.player1, player2: game.player2, chats: game.chats },
+        {
+          player1: game.player1,
+          player2: game.player2,
+          chats: game.chats.map((chat) =>
+            Object.assign({username: chat.player.username}, chat._doc)
+          ),
+        },
         game._doc
       )
     );
-    console.log(returnGames);
     res.json({
       status: "success",
       message: "Got Game Successfully!",

@@ -27,7 +27,13 @@ module.exports.get = function (query, option) {
   }
   // Populate Chats
   if (option.isGetChats){
-    promise.populate("chats");
+    promise.populate({
+      path: "chats",
+      populate: {
+        path: "player",
+        select: "username",
+      }
+    });
   }
   return promise.exec(); 
 };

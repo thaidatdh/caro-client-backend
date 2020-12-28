@@ -53,7 +53,7 @@ const gameSchema = new mongoose.Schema(
     player1ID: SchemaTypes.ObjectId,
     player2ID: SchemaTypes.ObjectId,
     winner: { type: String, default: "" },
-    totalTime: { type: SchemaTypes.Long, min: 0, default: 0 },
+    totalTime: { type: Number, min: 0, default: 0 },
     totalX: { type: Number, min: 0, default: 0 },
     totalO: { type: Number, min: 0, default: 0 },
     trophyTransferred: { type: Number, min: 0, default: 0 },
@@ -103,7 +103,7 @@ const moveSchema = new mongoose.Schema(
     type: { type: String, default: 'X' },
     row: { type: Number, min: 0, default: 0 },
     col: { type: Number, min: 0, default: 0 },
-    time: { type: SchemaTypes.Long, min: 0, default: 0 },
+    time: { type: Number, min: 0, default: 0 },
   },
   { collection: "moves" },
   { toJSON: { virtuals: true }, toObject: { virtuals: true } }
@@ -132,7 +132,7 @@ const chatSchema = new mongoose.Schema(
     gameID: SchemaTypes.ObjectId,
     playerID: SchemaTypes.ObjectId,
     content: { type: String, default: "" },
-    time: { type: SchemaTypes.Long, min: 0, default: 0 },
+    time: { type: Number, min: 0, default: 0 },
   },
   { collection: "chats" },
   { toJSON: { virtuals: true }, toObject: { virtuals: true } }
