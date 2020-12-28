@@ -1,20 +1,32 @@
 //Import Game Model
 Game = require("../models/gameModel");
-
 //For index
-exports.index = function (req, res) {
-  Game.get(function (err, game) {
-    if (err)
-      res.json({
-        status: "error",
-        message: err,
-      });
+exports.index = async function (req, res) {
+  const option = {
+    isGetPlayer1: true,
+    isGetPlayer2: true,
+    isGetChats: true,
+  };
+  try {
+    const games = await Game.get({}, option);
+    let returnGames = games.map((game) =>
+      Object.assign(
+        { player1: game.player1, player2: game.player2, chats: game.chats },
+        game._doc
+      )
+    );
+    console.log(returnGames);
     res.json({
       status: "success",
       message: "Got Game Successfully!",
-      data: game,
+      data: returnGames,
     });
-  });
+  } catch (err) {
+    res.json({
+      status: "error",
+      message: err,
+    });
+  }
 };
 
 //For creating new game
@@ -44,11 +56,12 @@ exports.add = function (req, res) {
 exports.view = function (req, res) {
   Game.findById(req.params.game_id)
     .populate({
-      path: "chat",
+      path: "chats",
       options: { sort: { created_at: 1 } },
     })
-    .populate("user1")
-    .populate("user2")
+    .populate("player1")
+    .populate("player2")
+    .populate("moves")
     .exec(function (err, game) {
       if (err) res.send(err);
       res.json({
@@ -61,15 +74,15 @@ exports.view = function (req, res) {
 exports.update = function (req, res) {
   Game.findById(req.params.game_id, function (err, game) {
     if (err) res.send(err);
-  game.player1ID = req.body.player1ID ? req.body.player1ID : game.player1ID;
-  game.player2ID = req.body.player2ID ? req.body.player2ID : game.player2ID;
-  game.totalX = req.body.totalX ? req.body.totalX : game.totalX;
-  game.totalY = req.body.totalY ? req.body.totalY : game.totalY;
-  game.winner = req.body.winner ? req.body.winner : game.winner;
-  game.totalTime = req.body.totalTime ? req.body.totalTime : game.totalTime;
-  game.trophyTransferred = req.body.trophyTransferred
-    ? req.body.trophyTransferred
-    : game.trophyTransferred;
+    game.player1ID = req.body.player1ID ? req.body.player1ID : game.player1ID;
+    game.player2ID = req.body.player2ID ? req.body.player2ID : game.player2ID;
+    game.totalX = req.body.totalX ? req.body.totalX : game.totalX;
+    game.totalY = req.body.totalY ? req.body.totalY : game.totalY;
+    game.winner = req.body.winner ? req.body.winner : game.winner;
+    game.totalTime = req.body.totalTime ? req.body.totalTime : game.totalTime;
+    game.trophyTransferred = req.body.trophyTransferred
+      ? req.body.trophyTransferred
+      : game.trophyTransferred;
 
     //save and check errors
     game.save(function (err) {

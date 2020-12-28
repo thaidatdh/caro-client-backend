@@ -30,10 +30,17 @@ const userSchema = new mongoose.Schema(
   { toJSON: { virtuals: true }, toObject: { virtuals: true } }
 );
 
-userSchema.virtual("boards", {
+userSchema.virtual("gamesAsP1", {
   ref: "Game",
-  localField: "userID",
-  foreignField: "userID",
+  localField: "_id",
+  foreignField: "player1ID",
+  justOne: false,
+});
+
+userSchema.virtual("gamesAsP2", {
+  ref: "Game",
+  localField: "_id",
+  foreignField: "player2ID",
   justOne: false,
 });
 
@@ -45,7 +52,7 @@ const gameSchema = new mongoose.Schema(
   {
     player1ID: SchemaTypes.ObjectId,
     player2ID: SchemaTypes.ObjectId,
-    winner: { type: String, default: ""},
+    winner: { type: String, default: "" },
     totalTime: { type: SchemaTypes.Long, min: 0, default: 0 },
     totalX: { type: Number, min: 0, default: 0 },
     totalO: { type: Number, min: 0, default: 0 },
@@ -58,14 +65,14 @@ const gameSchema = new mongoose.Schema(
 
 gameSchema.virtual("player1", {
   ref: "User",
-  localField: "player1",
+  localField: "player1ID",
   foreignField: "_id",
   justOne: true,
 });
 
 gameSchema.virtual("player2", {
   ref: "User",
-  localField: "player2",
+  localField: "player2ID",
   foreignField: "_id",
   justOne: true,
 });

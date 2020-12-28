@@ -34,9 +34,19 @@ userSchema.methods.comparePassword = function (passw, cb) {
 
 let User = module.exports = mongoose.model('User', userSchema);
 
-module.exports.get = function (callback, limit) {
-  User.find(callback).limit(limit); 
-}
+module.exports.get = function (query, option) {
+  option = option || {};
+  const promise = User.find(query);
+  // Limit
+  if (option.limit) {
+    promise.limit(limit);
+  }
+  // Populate Game
+  if (option.isGetGame) {
+    promise.populate("games");
+  }
+  return promise.exec();
+};
 
 module.exports.setResult = (query, option) => {
     const obj = {};
