@@ -1,4 +1,5 @@
 let mongoose = require("mongoose");
+const ObjectId = mongoose.Types.ObjectId;
 var bcrypt = require("bcrypt-nodejs");
 //schema
 const gameSchema = require('../database/mongoose_schema').gameSchema;
@@ -47,8 +48,8 @@ module.exports.add = function (player1IDStr, player2IDStr, info) {
   info.trophyTransferred = info.trophyTransferred || 0;
   info.create_at = info.create_at || Date.now();
   const newGame = new Game({
-    player1ID: mongoose.Types.ObjectId(player1IDStr),
-    player2ID: mongoose.Types.ObjectId(player2IDStr),
+    player1ID: new ObjectId(player1IDStr),
+    player2ID: new ObjectId(player2IDStr),
     winner: info.winner,
     totalTime: info.totalTime || 0,
     totalX: info.totalX,
@@ -62,6 +63,38 @@ module.exports.add = function (player1IDStr, player2IDStr, info) {
     console.log("Error at adding new Game");
   }
 }
+
+module.exports.getOne = function (idStr, option) {
+  option = option || {};
+  const promise = Game.findOne({_id: new ObjectId(idStr)});
+  // Limit
+  if (option.limit){
+    promise.limit(limit)
+  }
+  // Populate Player 1
+  if (option.isGetPlayer1){
+    promise.populate("player1");
+  }
+  // Populate Player 2
+  if (option.isGetPlayer2){
+    promise.populate("player2");
+  }
+  // Populate Moves
+  if (option.isGetMoves){
+    promise.populate("moves");
+  }
+  // Populate Chats
+  if (option.isGetChats){
+    promise.populate({
+      path: "chats",
+      populate: {
+        path: "player",
+        select: "username",
+      }
+    });
+  }
+  return promise.exec(); 
+};
 
 // Danger
 module.exports.deleteAll = () => {

@@ -34,6 +34,7 @@ exports.socketService = (io) => {
       }
       socket.join("Global-Room");
       io.to("Global-Room").emit("Global-Users", userWaiting);
+      notifyRoomOwnersGlobalUsers(io);
       // Overkill
       io.to("Global-Room").emit("Playing-Room", rooms);
     });
@@ -50,6 +51,7 @@ exports.socketService = (io) => {
       userWaiting = userWaiting.filter((user) => user._id != value.creator._id);
       socket.leave("Global-Room");
       io.to("Global-Room").emit("Global-Users", userWaiting);
+      notifyRoomOwnersGlobalUsers(io);
 
       let newRoomID = value.creator._id;
       if (rooms.find((room) => room.roomID === newRoomID)) {
@@ -85,6 +87,7 @@ exports.socketService = (io) => {
       if (!isUserInRoom) {
         userWaiting = temp1;
         io.to("Global-Room").emit("Global-Users", userWaiting);
+        notifyRoomOwnersGlobalUsers(io);
       }
       // User in Private Room
       else {
@@ -162,7 +165,8 @@ exports.socketService = (io) => {
       // Leave global room
       userWaiting = userWaiting.filter((user) => user._id != value.player._id);
       socket.leave("Global-Room");
-      io.to(value.roomID).emit("Global-Users", userWaiting);
+      io.to("Global-Room").emit("Global-Users", userWaiting);
+      notifyRoomOwnersGlobalUsers(io);
 
       const room = rooms.find((room) => room.roomID === value.roomID);
       room.num = room.num + 1;
@@ -390,6 +394,7 @@ exports.socketService = (io) => {
       socket.leave(`${value.roomID}`);
       socket.join("Global-Room");
       io.to("Global-Room").emit("Global-Users", userWaiting);
+      notifyRoomOwnersGlobalUsers(io);
     });
 
     //INVATE USER
@@ -418,6 +423,7 @@ exports.socketService = (io) => {
       if (!isUserInRoom) {
         userWaiting = temp1;
         io.to("Global-Room").emit("Global-Users", userWaiting);
+        notifyRoomOwnersGlobalUsers(io);
       }
       // User in Private Room
       else {
@@ -504,6 +510,7 @@ exports.socketService = (io) => {
             );
             socket.leave("Global-Room");
             io.to(rooms[i].roomID).emit("Global-Users", userWaiting);
+            notifyRoomOwnersGlobalUsers(io);
 
             const room = rooms.find((room) => room.roomID === rooms[i].roomID);
             room.num = room.num + 1;
@@ -531,6 +538,7 @@ exports.socketService = (io) => {
         );
         socket.leave("Global-Room");
         io.to("Global-Room").emit("Global-Users", userWaiting);
+        notifyRoomOwnersGlobalUsers(io);
 
         let newRoomID = value.creator._id;
         if (rooms.find((room) => room.roomID === newRoomID)) {
@@ -665,3 +673,10 @@ const saveGame = (io, room, winner, option) => {
     }
   });
 };
+
+const notifyRoomOwnersGlobalUsers = (io) => {
+  // Notify to all room owners
+  rooms.forEach((room) => {
+    io.to(room.creator.id).emit("Global-Users", userWaiting);
+  })
+}
