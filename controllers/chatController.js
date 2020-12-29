@@ -85,3 +85,20 @@ exports.delete = function (req, res) {
     }
   );
 };
+
+exports.delete_many = function (req, res) {
+  Chat.deleteMany(
+    { _id: { $in: req.body.list_chat_id } },
+    function (err, chat) {
+      if (err)
+        res.json({
+          status: "error",
+          message: err,
+        });
+      res.json({
+        status: "success",
+        message: "Delete Chat Successfully!",
+      });
+    }
+  );
+};
