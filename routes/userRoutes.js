@@ -13,6 +13,8 @@ router
 
 router.route("/signup").post(userController.signup);
 router.route("/login").post(userController.signin);
+router.route("/facebooklogin").post(userController.loginFacebook);
+router.route("/googlelogin").post(userController.loginGoogle);
 router.route("/sendValidationEmail").post(userController.sendEmailValidation);
 router
   .route("/emailValidation")

@@ -355,6 +355,285 @@ exports.signin = async function (req, res) {
     }
   );
 };
+exports.loginGoogle = function (req, res) {
+  if (!req.body.email || !req.body.google_token || !req.body.username) {
+    return res.json({
+      success: false,
+      msg: "Failed Google.",
+    });
+  }
+  User.findOne({ email: req.body.email }, function (err, user) {
+    if (err) {
+      return res.status(401).send({
+        success: false,
+        msg: "Error Google",
+      });
+    }
+
+    if (!user) {
+      let newUser = new User({
+        username: req.body.username,
+        password: req.body.password,
+        name: req.body.name,
+        email: req.body.email,
+        googleID: req.body.google_token,
+        facebookID: req.body.facebook_token,
+        user_type: configs.user_types.default,
+        isActive: true,
+      });
+      newUser.save(function (err) {
+        if (err) {
+          return res.json({
+            success: false,
+            msg: "Username already exists.",
+          });
+        }
+        //Sign In Google here
+        User.findOne({ email: req.body.email }, function (err, userFounded) {
+          if (err) {
+            return res.json({
+              success: false,
+              msg: "Error Google",
+            });
+          }
+          if (
+            userFounded &&
+            userFounded.isBlocked == false &&
+            userFounded.googleID === req.body.google_token
+          ) {
+            // if user is found and password is right create a token
+            let token = jwt.sign(JSON.stringify(userFounded), config.secret);
+            // return the information including token as JSON
+            res.json({ success: true, token: token, data: userFounded._id });
+          } else if (userFounded && userFounded.isBlocked == true) {
+            return res.json({
+              success: false,
+              msg: "This user is blocked",
+            });
+          } else {
+            if (
+              !userFounded ||
+              (userFounded.googleID !== "" &&
+                userFounded.googleID !== undefined)
+            ) {
+              return res.json({
+                success: false,
+                msg: "Google User not match",
+              });
+            }
+            userFounded.googleID = req.body.google_token;
+            userFounded.isActive = true;
+            userFounded.save(function (err) {
+              if (err) {
+                return res.json({
+                  success: false,
+                  msg: "Username already exists.",
+                });
+              }
+              // if user is found and password is right create a token
+              let token = jwt.sign(JSON.stringify(userFounded), config.secret);
+              // return the information including token as JSON
+              res.json({
+                success: true,
+                token: token,
+                user: userFounded,
+              });
+            });
+          }
+        });
+      });
+    } else {
+      //Sign In Google here
+      User.findOne({ email: req.body.email }, function (err, userFounded) {
+        if (err) {
+          return res.json({
+            success: false,
+            msg: "Error Google",
+          });
+        }
+        if (
+          userFounded &&
+          userFounded.isBlocked == false &&
+          userFounded.googleID === req.body.google_token
+        ) {
+          // if user is found and password is right create a token
+          let token = jwt.sign(JSON.stringify(userFounded), config.secret);
+          // return the information including token as JSON
+          res.json({ success: true, token: token, user: userFounded });
+        } else if (userFounded && userFounded.isBlocked == true) {
+          return res.json({
+            success: false,
+            msg: "This user is blocked",
+          });
+        } else {
+          if (
+            !userFounded ||
+            (userFounded.googleID !== "" && userFounded.googleID !== undefined)
+          ) {
+            return res.json({
+              success: false,
+              msg: "Google User not match",
+            });
+          }
+          userFounded.googleID = req.body.google_token;
+          userFounded.isActive = true;
+          userFounded.save(function (err) {
+            if (err) {
+              return res.json({
+                success: false,
+                msg: "Username already exists.",
+              });
+            }
+            // if user is found and password is right create a token
+            let token = jwt.sign(JSON.stringify(userFounded), config.secret);
+            // return the information including token as JSON
+            res.json({ success: true, token: token, user: userFounded });
+          });
+        }
+      });
+    }
+  });
+};
+
+exports.loginFacebook = function (req, res) {
+  if (!req.body.email || !req.body.facebook_token || !req.body.username) {
+    res.json({
+      success: false,
+      msg: "Failed Facebook.",
+    });
+  }
+  User.findOne({ email: req.body.email }, function (err, user) {
+    if (err) {
+      return res.status(401).send({
+        success: false,
+        msg: "Error Facebook",
+      });
+    }
+
+    if (!user) {
+      let newUser = new User({
+        username: req.body.username,
+        password: req.body.password,
+        name: req.body.name,
+        email: req.body.email,
+        googleID: req.body.google_token,
+        facebookID: req.body.facebook_token,
+        isActive: true,
+        user_type: configs.user_types.default,
+      });
+      newUser.save(function (err) {
+        if (err) {
+          return res.json({
+            success: false,
+            msg: "Username already exists.",
+          });
+        }
+        User.findOne({ email: req.body.email }, function (err, userFounded) {
+          if (err) {
+            return res.json({
+              success: false,
+              msg: "Error Facebook",
+            });
+          }
+          if (
+            userFounded &&
+            userFounded.isBlocked == false &&
+            userFounded.facebookID === req.body.facebook_token
+          ) {
+            // if user is found and password is right create a token
+            let token = jwt.sign(JSON.stringify(userFounded), config.secret);
+            // return the information including token as JSON
+            res.json({ success: true, token: token, user: userFounded });
+          } else if (userFounded && userFounded.isBlocked == true) {
+            return res.json({
+              success: false,
+              msg: "This user is blocked",
+            });
+          } else {
+            if (
+              !userFounded ||
+              (userFounded.facebookID !== "" &&
+                userFounded.facebookID !== undefined)
+            ) {
+              return res.json({
+                success: false,
+                msg: "Facebook User not match",
+              });
+            }
+            userFounded.facebookID = req.body.facebook_token;
+            userFounded.isActive = true;
+            userFounded.save(function (err) {
+              if (err) {
+                return res.json({
+                  success: false,
+                  msg: "Username already exists.",
+                });
+              }
+              // if user is found and password is right create a token
+              let token = jwt.sign(JSON.stringify(userFounded), config.secret);
+              // return the information including token as JSON
+              res.json({
+                success: true,
+                token: token,
+                user: userFounded,
+              });
+            });
+          }
+        });
+      });
+    } else {
+      //Sign In Facebook here
+      User.findOne({ email: req.body.email }, function (err, userFounded) {
+        if (err) {
+          return res.json({
+            success: false,
+            msg: "Error Facebook",
+          });
+        }
+        if (
+          userFounded &&
+          userFounded.isBlocked == false &&
+          userFounded.facebookID === req.body.facebook_token
+        ) {
+          // if user is found and password is right create a token
+          let token = jwt.sign(JSON.stringify(userFounded), config.secret);
+          // return the information including token as JSON
+          res.json({ success: true, token: token, data: userFounded._id });
+        } else if (userFounded && userFounded.isBlocked == true) {
+          return res.json({
+            success: false,
+            msg: "This user is blocked",
+          });
+        } else {
+          if (
+            !userFounded ||
+            (userFounded.facebookID !== "" &&
+              userFounded.facebookID !== undefined)
+          ) {
+            return res.json({
+              success: false,
+              msg: "Facebook User not match",
+            });
+          }
+          userFounded.facebookID = req.body.facebookID;
+          userFounded.isActive = true;
+          userFounded.save(function (err) {
+            if (err) {
+              return res.json({
+                success: false,
+                msg: "Username already exists.",
+              });
+            }
+            // if user is found and password is right create a token
+            let token = jwt.sign(JSON.stringify(userFounded), config.secret);
+            // return the information including token as JSON
+            res.json({ success: true, token: token, user: userFounded });
+          });
+        }
+      });
+    }
+  });
+};
 //Admin
 exports.adminsignin = function (req, res) {
   const decodedString = Buffer.from(req.body.data, "base64").toString();
@@ -458,4 +737,161 @@ exports.addstaff = function (req, res) {
       send;
     });
   }
+};
+
+exports.adminLoginGoogle = function (req, res) {
+  if (!req.body.email || !req.body.google_token || !req.body.username) {
+    return res.json({
+      success: false,
+      msg: "Failed Google.",
+    });
+  }
+  User.findOne({ email: req.body.email }, function (err, user) {
+    if (err) {
+      return res.status(401).send({
+        success: false,
+        msg: "Error Google",
+      });
+    }
+
+    if (!user) {
+      return res.status(404).send({
+        success: false,
+        msg: "Staff with this email not found",
+      });
+    }
+    //Sign In Google here
+    User.findOne(
+      {
+        email: req.body.email,
+        user_type: { $in: configs.user_types.data_staff },
+      },
+      function (err, userFounded) {
+        if (err) {
+          return res.json({
+            success: false,
+            msg: "Error Google",
+          });
+        }
+        if (
+          userFounded &&
+          userFounded.isBlocked == false &&
+          userFounded.googleID === req.body.google_token
+        ) {
+          // if user is found and password is right create a token
+          let token = jwt.sign(JSON.stringify(userFounded), config.secret);
+          // return the information including token as JSON
+          res.json({ success: true, token: token, user: userFounded });
+        } else if (userFounded && userFounded.isBlocked == true) {
+          return res.json({
+            success: false,
+            msg: "This staff is blocked",
+          });
+        } else {
+          if (
+            !userFounded ||
+            (userFounded.googleID !== "" && userFounded.googleID !== undefined)
+          ) {
+            return res.json({
+              success: false,
+              msg: "Google User not match",
+            });
+          }
+          userFounded.googleID = req.body.google_token;
+          userFounded.isActive = true;
+          userFounded.save(function (err) {
+            if (err) {
+              return res.json({
+                success: false,
+                msg: "Username already exists.",
+              });
+            }
+            // if user is found and password is right create a token
+            let token = jwt.sign(JSON.stringify(userFounded), config.secret);
+            // return the information including token as JSON
+            res.json({ success: true, token: token, user: userFounded });
+          });
+        }
+      }
+    );
+  });
+};
+
+exports.adminLoginFacebook = function (req, res) {
+  if (!req.body.email || !req.body.facebook_token || !req.body.username) {
+    res.json({
+      success: false,
+      msg: "Failed Facebook.",
+    });
+  }
+  User.findOne(
+    {
+      email: req.body.email,
+      user_type: { $in: configs.user_types.data_staff },
+    },
+    function (err, user) {
+      if (err) {
+        return res.status(401).send({
+          success: false,
+          msg: "Error Facebook",
+        });
+      }
+
+      if (!user) {
+        return res.status(404).send({
+          success: false,
+          msg: "Staff with this email not found",
+        });
+      }
+      //Sign In Facebook here
+      User.findOne({ email: req.body.email }, function (err, userFounded) {
+        if (err) {
+          return res.json({
+            success: false,
+            msg: "Error Facebook",
+          });
+        }
+        if (
+          userFounded &&
+          userFounded.isBlocked == false &&
+          userFounded.facebookID === req.body.facebook_token
+        ) {
+          // if user is found and password is right create a token
+          let token = jwt.sign(JSON.stringify(userFounded), config.secret);
+          // return the information including token as JSON
+          res.json({ success: true, token: token, data: userFounded._id });
+        } else if (userFounded && userFounded.isBlocked == true) {
+          return res.json({
+            success: false,
+            msg: "This staff is blocked",
+          });
+        } else {
+          if (
+            !userFounded ||
+            (userFounded.facebookID !== "" &&
+              userFounded.facebookID !== undefined)
+          ) {
+            return res.json({
+              success: false,
+              msg: "Facebook User not match",
+            });
+          }
+          userFounded.facebookID = req.body.facebookID;
+          userFounded.isActive = true;
+          userFounded.save(function (err) {
+            if (err) {
+              return res.json({
+                success: false,
+                msg: "Username already exists.",
+              });
+            }
+            // if user is found and password is right create a token
+            let token = jwt.sign(JSON.stringify(userFounded), config.secret);
+            // return the information including token as JSON
+            res.json({ success: true, token: token, user: userFounded });
+          });
+        }
+      });
+    }
+  );
 };
