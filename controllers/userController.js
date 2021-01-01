@@ -703,17 +703,18 @@ exports.addstaff = function (req, res) {
 
       if (!user) {
         let newUser = new User({
-          name: user.name,
           username: decoded.username,
           password: decoded.password,
           email: decoded.email,
           name: decoded.name,
           isBlocked: false,
-          isActive: true,
+          isActive: decoded.isActive,
+          rank: Utils.evaluateRank(0, 0, 0, 0),
           user_type: decoded.user_type
             ? decoded.user_type
             : configs.user_types.default_staff,
         });
+        console.log(newUser);
         newUser.save(function (err) {
           if (err) {
             return res.status(400).send({
@@ -722,9 +723,17 @@ exports.addstaff = function (req, res) {
             });
           }
           let token = jwt.sign(JSON.stringify(newUser), config.secret);
+          if (decoded.email) {
+            const mailContent =
+              "Please click this url to confirm registration at Caro:\n" +
+              configs.frontend_admin_link +
+              "account-validation/" +
+              token;
+            mailer.sendMail(decoded.email, "Account validation", mailContent);
+          }
           res.status(200).send({
             success: true,
-            message: "Successful created new user.",
+            message: "Successful created new staff.",
             user: newUser,
             token: token,
           });
@@ -732,9 +741,8 @@ exports.addstaff = function (req, res) {
       } else {
         return res
           .status(400)
-          .send({ success: false, message: "Username already exists." });
+          .send({ success: false, message: "Username or email already exists." });
       }
-      send;
     });
   }
 };
