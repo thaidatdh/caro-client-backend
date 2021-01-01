@@ -40,14 +40,54 @@ exports.staff_index = function (req, res) {
 };
 
 // View User
-exports.view = function (req, res) {
-  User.findById(req.params.user_id, function (err, user) {
-    if (err) res.send(err);
+exports.view = async function (req, res) {
+  const option = {
+    isGetGame: true,
+    isGetGamePlayer: true,
+  };
+  try {
+    const user = await User.getById(req.params.user_id, option);
+    const games1 = user.gamesAsP1.map((g) =>
+      Object.assign(
+        {
+          player1: g.player1,
+          player2: g.player2,
+          moves: g.moves,
+          chats: g.chats.map((c) =>
+            Object.assign({ username: c.player.username }, c._doc)
+          ),
+        },
+        g._doc
+      )
+    );
+    const game2 = user.gamesAsP2.map((g) =>
+      Object.assign(
+        {
+          player1: g.player1,
+          player2: g.player2,
+          moves: g.moves,
+          chats: g.chats.map((c) =>
+            Object.assign({ username: c.player.username }, c._doc)
+          ),
+        },
+        g._doc
+      )
+    );
+    let games = games1.concat(game2);
+    games.sort(function (a, b) {
+      return b.created_at - a.created_at;
+    });
+    const data = Object.assign({ games: games }, user._doc);
+    console.log(data);
     res.json({
       message: "User Details",
-      data: user,
+      data: data,
     });
-  });
+  } catch (err) {
+    res.json({
+      message: "Failed",
+    });
+  }
 };
 
 // Update User
@@ -743,12 +783,10 @@ exports.addstaff = function (req, res) {
           });
         });
       } else {
-        return res
-          .status(400)
-          .send({
-            success: false,
-            message: "Username or email already exists.",
-          });
+        return res.status(400).send({
+          success: false,
+          message: "Username or email already exists.",
+        });
       }
     });
   }

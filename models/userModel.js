@@ -43,7 +43,63 @@ module.exports.get = function (query, option) {
   }
   // Populate Game
   if (option.isGetGame) {
-    promise.populate("games");
+    promise.populate("gamesAsP1");
+    promise.populate("gamesAsP2");
+  }
+  return promise.exec();
+};
+module.exports.getById = function (id, option) {
+  option = option || {};
+  const promise = User.findById(id);
+  // Limit
+  if (option.limit) {
+    promise.limit(limit);
+  }
+  // Populate Game
+  if (option.isGetGame) {
+    
+    promise.populate({
+      path: "gamesAsP1",
+      populate: [
+        {
+          path: "player1",
+        },
+        {
+          path: "player2",
+        },
+        {
+          path: "moves",
+        },
+        {
+          path: "chats",
+          populate: {
+            path: "player",
+            select: "username",
+          },
+        },
+      ],
+    });
+    promise.populate({
+      path: "gamesAsP2",
+      populate: [
+        {
+          path: "player1",
+        },
+        {
+          path: "player2",
+        },
+        {
+          path: "moves",
+        },
+        {
+          path: "chats",
+          populate: {
+            path: "player",
+            select: "username",
+          },
+        },
+      ],
+    });
   }
   return promise.exec();
 };
