@@ -78,7 +78,6 @@ exports.view = async function (req, res) {
       return b.created_at - a.created_at;
     });
     const data = Object.assign({ games: games }, user._doc);
-    console.log(data);
     res.json({
       message: "User Details",
       data: data,
