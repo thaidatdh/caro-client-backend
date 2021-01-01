@@ -272,7 +272,9 @@ exports.signup = function (req, res) {
               configs.frontend_link +
               "account-validation/" +
               token;
-            mailer.sendMail(decoded.email, "Account validation", mailContent);
+            try {
+              mailer.sendMail(decoded.email, "Account validation", mailContent);
+            } catch (err) {}
           }
           res.status(200).send({
             success: true,
@@ -729,7 +731,9 @@ exports.addstaff = function (req, res) {
               configs.frontend_admin_link +
               "account-validation/" +
               token;
-            mailer.sendMail(decoded.email, "Account validation", mailContent);
+            try {
+              mailer.sendMail(decoded.email, "Account validation", mailContent);
+            } catch (err) {}
           }
           res.status(200).send({
             success: true,
@@ -741,7 +745,10 @@ exports.addstaff = function (req, res) {
       } else {
         return res
           .status(400)
-          .send({ success: false, message: "Username or email already exists." });
+          .send({
+            success: false,
+            message: "Username or email already exists.",
+          });
       }
     });
   }

@@ -5,24 +5,18 @@ exports.sendMail = async function (email, header, content) {
     pwd1: "PTUDW",
     pwd2: "1733@",
   };
-  try {
-    let transporter = nodemailer.createTransport({
-      service: "Gmail",
-      auth: {
-        user: fromEmail.email,
-        pass: fromEmail.pwd1 + fromEmail.pwd2,
-      },
-    });
-    var mailOptions = {
-      from: '"CaroTeam" <' + fromEmail.email + ">",
-      to: email,
-      subject: "[Caro] " + header,
-      text: content,
-    };
-    transporter.sendMail(mailOptions);  
-  }
-  catch(err) {
-    console.log(err);
-    console.log("send email failed");
-  }
+  let transporter = nodemailer.createTransport({
+    service: "Gmail",
+    auth: {
+      user: fromEmail.email,
+      pass: fromEmail.pwd1 + fromEmail.pwd2,
+    },
+  });
+  var mailOptions = {
+    from: '"CaroTeam" <' + fromEmail.email + ">",
+    to: email,
+    subject: "[Caro] " + header,
+    text: content,
+  };
+  return transporter.sendMail(mailOptions);
 };
