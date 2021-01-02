@@ -2,7 +2,7 @@ let mongoose = require("mongoose");
 const ObjectId = mongoose.Types.ObjectId;
 var bcrypt = require("bcrypt-nodejs");
 //schema
-const gameSchema = require('../database/mongoose_schema').gameSchema;
+const gameSchema = require("../database/mongoose_schema").gameSchema;
 
 // Export Game Model
 let Game = (module.exports = mongoose.model("Game", gameSchema));
@@ -11,32 +11,32 @@ module.exports.get = function (query, option) {
   option = option || {};
   const promise = Game.find(query);
   // Limit
-  if (option.limit){
-    promise.limit(limit)
+  if (option.limit) {
+    promise.limit(limit);
   }
   // Populate Player 1
-  if (option.isGetPlayer1){
+  if (option.isGetPlayer1) {
     promise.populate("player1");
   }
   // Populate Player 2
-  if (option.isGetPlayer2){
+  if (option.isGetPlayer2) {
     promise.populate("player2");
   }
   // Populate Moves
-  if (option.isGetMoves){
+  if (option.isGetMoves) {
     promise.populate("moves");
   }
   // Populate Chats
-  if (option.isGetChats){
+  if (option.isGetChats) {
     promise.populate({
       path: "chats",
       populate: {
         path: "player",
         select: "username",
-      }
+      },
     });
   }
-  return promise.exec(); 
+  return promise.exec();
 };
 
 module.exports.add = function (player1IDStr, player2IDStr, info) {
@@ -55,48 +55,58 @@ module.exports.add = function (player1IDStr, player2IDStr, info) {
     totalX: info.totalX,
     totalO: info.totalO,
     trophyTransferred: info.trophyTransferred,
-    create_at: info.create_at
-  })
+    create_at: info.create_at,
+  });
   try {
     return newGame.save();
-  } catch(err){
+  } catch (err) {
     console.log("Error at adding new Game");
   }
-}
+};
 
 module.exports.getOne = function (idStr, option) {
   option = option || {};
-  const promise = Game.findOne({_id: new ObjectId(idStr)});
+  const promise = Game.findOne({ _id: new ObjectId(idStr) });
   // Limit
-  if (option.limit){
-    promise.limit(limit)
+  if (option.limit) {
+    promise.limit(limit);
   }
   // Populate Player 1
-  if (option.isGetPlayer1){
+  if (option.isGetPlayer1) {
     promise.populate("player1");
   }
   // Populate Player 2
-  if (option.isGetPlayer2){
+  if (option.isGetPlayer2) {
     promise.populate("player2");
   }
   // Populate Moves
-  if (option.isGetMoves){
+  if (option.isGetMoves) {
     promise.populate("moves");
   }
   // Populate Chats
-  if (option.isGetChats){
+  if (option.isGetChats) {
     promise.populate({
       path: "chats",
       populate: {
         path: "player",
         select: "username",
-      }
+      },
     });
   }
-  return promise.exec(); 
+  return promise.exec();
 };
 
 // Danger
 module.exports.deleteAll = () => {
   return Game.remove({}).exec();
-}
+};
+
+module.exports.getList = (idOwner) => {
+  const promise = Game.find({
+    $or: [
+      { player1ID: new ObjectId(idOwner) },
+      { player2ID: new ObjectId(idOwner) },
+    ],
+  });
+  return promise.exec();
+};

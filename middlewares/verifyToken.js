@@ -19,7 +19,6 @@ exports.verifyUser = (request, response, next) => {
       } else {
         request.user = decoded;
         request.isLoggedIn = true;
-        console.log("Verify");
         next();
       }
     });

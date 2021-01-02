@@ -678,5 +678,5 @@ const notifyRoomOwnersGlobalUsers = (io) => {
   // Notify to all room owners
   rooms.forEach((room) => {
     io.to(room.creator.id).emit("Global-Users", userWaiting);
-  })
-}
+  });
+};
