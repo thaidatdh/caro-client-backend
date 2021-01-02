@@ -7,6 +7,7 @@ User = require("../models/userModel");
 const configs = require("../configs");
 const mailer = require("../service/mailer");
 const Utils = require("../service/utils");
+const userModel = require("../models/userModel");
 //For index
 exports.player_index = function (req, res) {
   User.find({ user_type: configs.user_types.default })
@@ -894,4 +895,15 @@ exports.adminLoginFacebook = function (req, res) {
       });
     }
   );
+};
+
+exports.rankingByTrophy = async (req, res) => {
+  const limit = req.params.limit ? req.params.limit : 10;
+  const page = req.params.pages ? req.params.pages : 1;
+  try {
+    const result = await userModel.getListRank({}, { limit: limit });
+    res.status(200).send({ success: true, payload: result });
+  } catch (e) {
+    res.status(500).send("Internal Server Error");
+  }
 };

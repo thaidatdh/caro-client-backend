@@ -5,14 +5,21 @@ exports.verifyUser = (request, response, next) => {
   let token = request.header("Authorization");
   if (!token) return response.status(401).send("Access Denied");
   token = token.replace("Bearer ", "");
+
   try {
     jwt.verify(token, config.secret, (err, decoded) => {
-      if (err || decoded.isBlocked || (!decoded.isActive && decoded.user_type === constants.user_types.default)) {
+      if (
+        err ||
+        decoded.isBlocked ||
+        (!decoded.isActive &&
+          decoded.user_type === constants.user_types.default)
+      ) {
         console.log(err);
         response.status(401).send({ message: "Access Denied" });
       } else {
         request.user = decoded;
         request.isLoggedIn = true;
+        console.log("Verify");
         next();
       }
     });
@@ -43,7 +50,11 @@ exports.verifyAdmin = (request, response, next) => {
   token = token.replace("Bearer ", "");
   try {
     jwt.verify(token, config.secret, (err, decoded) => {
-      if (err || constants.user_types.default === decoded.user_type || decoded.isBlocked) {
+      if (
+        err ||
+        constants.user_types.default === decoded.user_type ||
+        decoded.isBlocked
+      ) {
         response.status(401).send({ message: "Access Denied" });
       } else {
         request.user = decoded;
