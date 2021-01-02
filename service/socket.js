@@ -12,6 +12,7 @@ let userWaiting = [];
 let rooms = [];
 let userPlaying = [];
 let interval;
+let disconnectedPlayers = [];
 const boardSize = utils.boardSize;
 
 /**Connection**/
@@ -25,18 +26,24 @@ exports.socketService = (io) => {
     //Chat.deleteAll();
     //ADD USER TO GLOBAL ROOM
     socket.on("Global-Room", (value) => {
-      if (!userWaiting.find((user) => user._id == value.userID)) {
-        userWaiting.push({
-          id: socket.id,
-          _id: value.userID,
-          username: value.username,
-        });
+      // Reconnect
+      const disconnectedPlayer = disconnectedPlayers.filter((disconnected) => disconnected.playerID === value.userID);
+      if (disconnectedPlayer.length > 0){
+        io.to(socket.id).emit("Reconnect-Response", disconnectedPlayer[0].room)
+      } else {
+        if (!userWaiting.find((user) => user._id == value.userID)) {
+          userWaiting.push({
+            id: socket.id,
+            _id: value.userID,
+            username: value.username,
+          });
+        }
+        socket.join("Global-Room");
+        io.to("Global-Room").emit("Global-Users", userWaiting);
+        notifyRoomOwnersGlobalUsers(io);
+        // Overkill
+        io.to("Global-Room").emit("Playing-Room", rooms);
       }
-      socket.join("Global-Room");
-      io.to("Global-Room").emit("Global-Users", userWaiting);
-      notifyRoomOwnersGlobalUsers(io);
-      // Overkill
-      io.to("Global-Room").emit("Playing-Room", rooms);
     });
 
     //CHAT ALL IN GLOBAL ROOM
@@ -63,11 +70,11 @@ exports.socketService = (io) => {
       console.log(`Room ${newRoomID} created`);
       const newRoom = {
         roomID: newRoomID,
-        creator: { ...value.creator, id: socket.id },
+        creator: { ...value.creator, id: socket.id, isConnected: true },
         title: value.title,
         num: 1,
         status: utils.roomStatus.waiting,
-        players: [{ ...value.creator, id: socket.id, isReady: false }],
+        players: [{ ...value.creator, id: socket.id, isReady: false, isConnected: true }],
         spectators: [],
         chats: [], // Chats will not be saved
         // Create Board: no one's turn yet
@@ -170,7 +177,7 @@ exports.socketService = (io) => {
 
       const room = rooms.find((room) => room.roomID === value.roomID);
       room.num = room.num + 1;
-      room.players.push({ ...value.player, id: socket.id });
+      room.players.push({ ...value.player, id: socket.id, isConnected: true });
 
       socket.to(value.roomID).emit("Second-Player", value.player);
       socket.join(value.roomID);
@@ -373,6 +380,9 @@ exports.socketService = (io) => {
             rooms[i].players = rooms[i].players.filter(
               (player) => player._id != value.player._id
             );
+            rooms[i].players.forEach((player) => {
+              player.isReady = false;
+            })
             temp.push(rooms[i]);
             socket
               .to(`${rooms[i].roomID}`)
@@ -429,7 +439,70 @@ exports.socketService = (io) => {
       else {
         const temp = [];
         for (var i = 0; i < rooms.length; i++) {
-          if (
+          let player, otherPlayer, type;
+          if (rooms[i].players[0] && rooms[i].players[0].id === socket.id){
+            player = rooms[i].players[0];
+            otherPlayer = rooms[i].players[1];
+            type = 0;
+          } else if (rooms[i].players[1] && rooms[i].players[1].id === socket.id){
+            player = rooms[i].players[1];
+            otherPlayer = rooms[i].players[0];
+            type = 1;
+          }
+          if (player){
+            player.isConnected = false;
+            // Game ongoing
+            if (
+              rooms[i].board &&
+              rooms[i].board.squares.length > 0 &&
+              !rooms[i].board.winner){
+                // 1 player is disconnected
+                if (otherPlayer.isConnected) {
+                  const totalMove = rooms[i].board.total;
+                  rooms[i].board.turnTimeUsed = (totalMove > 0)? (Date.now() - rooms[i].board.timeStart - rooms[i].board.moves[totalMove - 1].time) : 0;
+                  disconnectedPlayers.push({
+                    playerID: player._id,
+                    room: {
+                      roomID: rooms[i].roomID,
+                      title: rooms[i].title,
+                      creator: rooms[i].creator.username
+                    },
+                    type: type
+                  }); 
+                  temp.push(rooms[i]);
+                  io.to(rooms[i].roomID).emit("Player-Disconnect-Response", player);
+                }
+                // 2 player is disconnected => draw
+                else {
+                  disconnectedPlayers = disconnectedPlayers.filter((disconnected) => disconnected.playerID != otherPlayer._id);
+                  // Save Game
+                  await saveGame(io, rooms[i], "None", {
+                    toPlayer1: false,
+                    toPlayer2: false
+                  });
+                }
+            } else {
+              // Room owner out => close room
+              if (player.id === rooms[i].creator.id) {
+                socket
+                  .to(`${rooms[i].roomID}`)
+                  .emit("Close-Room", rooms[i].roomID);
+              } else {
+                rooms[i].players.forEach((player) => {
+                  player.isReady = false;
+                })
+                temp.push(rooms[i]);
+                socket
+                  .to(`${rooms[i].roomID}`)
+                  .emit("Leave-Room-Player", { player: socket.id });
+              }
+            }
+          } else {
+            temp.push(rooms[i]);
+          }
+          rooms = temp;
+          io.to("Global-Room").emit("Playing-Room", rooms);
+          /*if (
             (rooms[i].players[0] && rooms[i].players[0].id === socket.id) ||
             (rooms[i].players[1] && rooms[i].players[1].id === socket.id)
           ) {
@@ -484,14 +557,15 @@ exports.socketService = (io) => {
                 .emit("Leave-Room-Player", { player: socket.id });
             }
           } else {
-            temp.push(rooms[i]);
-          }
+            //temp.push(rooms[i]);
+          }*/
         }
-        rooms = temp;
-        io.to("Global-Room").emit("Playing-Room", rooms);
+        //rooms = temp;
+        //io.to("Global-Room").emit("Playing-Room", rooms);
       }
       console.log("disconnect: " + socket.id);
     });
+
     //QUICK PLAY
     socket.on("Quick-Play", (value) => {
       let check = false;
@@ -514,7 +588,7 @@ exports.socketService = (io) => {
 
             const room = rooms.find((room) => room.roomID === rooms[i].roomID);
             room.num = room.num + 1;
-            room.players.push({ ...value.creator, id: socket.id });
+            room.players.push({ ...value.creator, id: socket.id, isConnected: true });
 
             socket.emit("Searched-Room", { roomID: rooms[i].roomID, turn: 2 });
             socket.to(rooms[i].roomID).emit("Second-Player", value.creator);
@@ -550,11 +624,11 @@ exports.socketService = (io) => {
         console.log(`Room ${newRoomID} created`);
         const newRoom = {
           roomID: newRoomID,
-          creator: { ...value.creator, id: socket.id },
+          creator: { ...value.creator, id: socket.id, isConnected: true },
           title: value.title,
           num: 1,
           status: utils.roomStatus.waiting,
-          players: [{ ...value.creator, id: socket.id, isReady: false }],
+          players: [{ ...value.creator, id: socket.id, isReady: false, isConnected: true }],
           spectators: [],
           chats: [], // Chats will not be saved
           // Create Board: no one's turn yet
@@ -565,10 +639,113 @@ exports.socketService = (io) => {
         io.to("Global-Room").emit("Playing-Room", rooms);
       }
     });
-  });
-};
+    // RECONNECT
+    socket.on("Reconnect", (value) => {
+      // Leave global room
+      userWaiting = userWaiting.filter((user) => user._id != value.player._id);
+      socket.leave("Global-Room");
+      io.to("Global-Room").emit("Global-Users", userWaiting);
+      notifyRoomOwnersGlobalUsers(io);
 
-const saveGame = (io, room, winner, option) => {
+      // 
+      disconnectedPlayers = disconnectedPlayers.filter((disconnected) => disconnected.playerID != value.player._id);
+
+      const room = rooms.find((room) => room.roomID === value.roomID);
+      let player, otherPlayer;
+      if (room.players[0]._id === value.player._id){
+        player = room.players[0];
+        otherPlayer = room.players[1];
+      } else {
+        player = room.players[1];
+        otherPlayer = room.players[0];
+      }
+      player.id = socket.id;
+      player.isConnected = true;
+      socket.join(value.roomID);
+      io.to(socket.id).emit("Second-Player", otherPlayer);
+
+      io.to(socket.id).emit("Private-Room-Chat-Response", room.chats);
+      // Reconnect notification
+      io.to(room.roomID).emit("Player-Reconnect-Response", player);
+      // Board
+      io.to(room.roomID).emit("Board-Response", room.board);
+      io.to(`${value.roomID}`).emit("Room-Owner", room.creator._id);
+
+      room.board.turnTimeUsed = 0;
+    });
+
+    // DISCONNECTED PLAYER LOSE
+    socket.on("Disconnected-Player-Lose", async (value) => {
+      const temp = [];
+      for (var i = 0; i < rooms.length; i++) {
+        if (rooms[i].roomID === value.roomID) {
+          // Declare winner
+          if (
+            rooms[i].board &&
+            rooms[i].board.squares.length > 0 &&
+            !rooms[i].board.winner
+          ) {
+            rooms[i].board.turn = 0;
+            rooms[i].status = utils.roomStatus.waiting;
+            let winner = "", toPlayer1 = false, toPlayer2 = false, loserPlayer;
+            if (rooms[i].players[0].id === socket.id) {
+              rooms[i].players[0].isReady = false;
+              winner = "X";
+              toPlayer1 = true;
+              loserPlayer = rooms[i].players[1];
+            }
+            else if (rooms[i].players[1].id === socket.id) {
+              rooms[i].players[1].isReady = false;
+              winner = "O";
+              toPlayer2 = true;
+              loserPlayer = rooms[i].players[0];
+            }
+            rooms[i].board.winner = winner;
+            io.to(`${rooms[i].roomID}`).emit("Declare-Winner-Response", {
+              winner: winner,
+              winnerList: [0, 1, 2, 3, 4],
+            });
+
+            disconnectedPlayers = disconnectedPlayers.filter((disconnected) => disconnected.playerID != loserPlayer._id);
+
+            // Save Game
+            await saveGame(io, rooms[i], winner, {
+              toPlayer1: toPlayer1,
+              toPlayer2: toPlayer2,
+            });
+          }
+
+          // Room owner out => close room
+          if (value.player._id !== rooms[i].creator._id) {
+            io.to(`${rooms[i].roomID}`).emit("Close-Room", rooms[i].roomID);
+          } else {
+            rooms[i].num--;
+            let remainingP, loser;
+            if (rooms[i].players[0]._id === value.player._id){
+              remainingP = rooms[i].players[0];
+              loser = rooms[i].players[1];
+            } else {
+              remainingP = rooms[i].players[1];
+              loser = rooms[i].players[0];
+            }
+            remainingP.isReady = false;
+            rooms[i].players = [remainingP];
+            temp.push(rooms[i]);
+            io
+              .to(rooms[i].roomID)
+              .emit("Leave-Room-Player", { player: loser.id });
+          }
+        } else {
+          temp.push(rooms[i]);
+        }
+      }
+      rooms = temp;
+      io.to("Global-Room").emit("Playing-Room", rooms);
+  });
+    
+})}
+
+const saveGame = (io, room, winner, option) => { 
   return new Promise(async (resolve, reject) => {
     io.to(room.roomID).emit("Loading-Response", true);
     try {
