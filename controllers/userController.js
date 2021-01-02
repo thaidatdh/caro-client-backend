@@ -7,6 +7,7 @@ User = require("../models/userModel");
 const configs = require("../configs");
 const mailer = require("../service/mailer");
 const Utils = require("../service/utils");
+const userModel = require("../models/userModel");
 //For index
 exports.player_index = function (req, res) {
   User.find({ user_type: configs.user_types.default })
@@ -95,15 +96,16 @@ exports.update = function (req, res) {
     if (err) res.send(err);
     const decodedString = Buffer.from(req.body.data, "base64").toString();
     const decoded = JSON.parse(decodedString);
+    const isChangeEmail = decoded.email === user.email;
     user.name = decoded.name ? decoded.name : user.name;
     user.username = decoded.username ? decoded.username : user.username;
     user.password = decoded.password ? decoded.password : user.password;
     user.email = decoded.email ? decoded.email : user.email;
     user.avatar = decoded.avatar ? decoded.avatar : user.avatar;
-    user.win = decoded.win ? decoded.win : user.win;
-    user.lose = decoded.lose ? decoded.lose : user.lose;
-    user.draw = decoded.draw ? decoded.draw : user.draw;
-    user.trophy = decoded.trophy ? decoded.trophy : user.trophy;
+    user.win = decoded.win !== 0 ? decoded.win : user.win;
+    user.lose = decoded.lose !== 0 ? decoded.lose : user.lose;
+    user.draw = decoded.draw !== 0 ? decoded.draw : user.draw;
+    user.trophy = decoded.trophy !== 0 ? decoded.trophy : user.trophy;
     user.rank = Utils.evaluateRank(user.win, user.lose, user.draw, user.trophy);
     user.isBlocked =
       decoded.isBlocked != undefined ? decoded.isBlocked : user.isBlocked;
@@ -115,10 +117,18 @@ exports.update = function (req, res) {
       if (err) res.json(err);
       // if user is found and password is right create a token
       let token = jwt.sign(JSON.stringify(user), config.secret);
+      let isEmailSent = false;
+      if (isChangeEmail) {
+        try {
+          mailer.sendMail(user.email, "Account validation", mailContent);
+          isEmailSent = true;
+        } catch (err) {}
+      }
       res.json({
         message: "User Updated Successfully",
         payload: user,
         token: token,
+        isEmailSent: isEmailSent,
       });
     });
   });
@@ -946,4 +956,15 @@ exports.adminLoginFacebook = function (req, res) {
       });
     }
   );
+};
+
+exports.rankingByTrophy = async (req, res) => {
+  const limit = req.params.limit ? req.params.limit : 10;
+  const page = req.params.pages ? req.params.pages : 1;
+  try {
+    const result = await userModel.getListRank({}, { limit: limit });
+    res.status(200).send({ success: true, payload: result });
+  } catch (e) {
+    res.status(500).send("Internal Server Error");
+  }
 };

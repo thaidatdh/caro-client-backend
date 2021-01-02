@@ -1,5 +1,6 @@
 const mongoose = require("mongoose");
 const ObjectId = mongoose.Types.ObjectId;
+const gameModel = require("../models/gameModel");
 
 //Import Game Model
 Game = require("../models/gameModel");
@@ -18,7 +19,7 @@ exports.index = async function (req, res) {
           player1: game.player1,
           player2: game.player2,
           chats: game.chats.map((chat) =>
-            Object.assign({username: chat.player.username}, chat._doc)
+            Object.assign({ username: chat.player.username }, chat._doc)
           ),
         },
         game._doc
@@ -123,7 +124,7 @@ exports.delete = function (req, res) {
 };
 
 // History
-exports.history = async(req, res) => {
+exports.history = async (req, res) => {
   const userID = req.query.userID;
   const gameID = req.query.gameID;
   if (!userID || !gameID) {
@@ -142,10 +143,10 @@ exports.history = async(req, res) => {
         isGetPlayer1: true,
         isGetPlayer2: true,
         isGetChats: true,
-        isGetMoves: true
-      }
+        isGetMoves: true,
+      };
       const game = await Game.getOne(gameID, option);
-      if (!game || (game.player1._id != userID && game.player2._id != userID)){
+      if (!game || (game.player1._id != userID && game.player2._id != userID)) {
         res.status(403).send({
           success: false,
           errors: [
@@ -175,7 +176,7 @@ exports.history = async(req, res) => {
               draw: game.player1.draw,
               trophy: game.player1.trophy,
               rank: game.player1.rank,
-              avatar: game.player1.avatar
+              avatar: game.player1.avatar,
             },
             player2: {
               username: game.player2.username,
@@ -186,24 +187,22 @@ exports.history = async(req, res) => {
               draw: game.player2.draw,
               trophy: game.player2.trophy,
               rank: game.player2.rank,
-              avatar: game.player2.avatar
+              avatar: game.player2.avatar,
             },
             create_at: game.create_at,
             chats: game.chats.map((chat) =>
-              Object.assign(
-                {
-                  _id: chat._id,
-                  username: chat.player.username,
-                  content: chat.content,
-                  time: chat.time
-                },
-              )
+              Object.assign({
+                _id: chat._id,
+                username: chat.player.username,
+                content: chat.content,
+                time: chat.time,
+              })
             ),
-            moves: [...game.moves]
-          }
-        })
+            moves: [...game.moves],
+          },
+        });
       }
-    } catch(err){
+    } catch (err) {
       console.log("Error at getting game's history");
       res.status(403).send({
         success: false,
@@ -216,4 +215,19 @@ exports.history = async(req, res) => {
       });
     }
   }
-}
+};
+
+exports.listGame = async (req, res) => {
+  const userID = req.query.userID;
+
+  try {
+    if (userID) {
+      const result = await gameModel.getList(userID);
+      res.status(200).send({ success: true, payload: result });
+    } else {
+      res.status(403).send("User ID not found");
+    }
+  } catch (e) {
+    res.status(500).send("Internal Server Error");
+  }
+};

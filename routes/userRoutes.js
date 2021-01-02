@@ -2,6 +2,13 @@ let router = require("express").Router();
 const verifyToken = require("../middlewares/verifyToken");
 //Import User Controller
 let userController = require("../controllers/userController");
+let gameController = require("../controllers/gameController");
+
+router
+  .route("/ranking")
+  .get(verifyToken.verifyUser, userController.rankingByTrophy);
+
+router.route("/list-game").get(verifyToken.verifyUser, gameController.listGame);
 
 router.route("/").get(verifyToken.verifyAdmin, userController.player_index);
 router
@@ -19,7 +26,9 @@ router.route("/sendValidationEmail").post(userController.sendEmailValidation);
 router
   .route("/emailValidation")
   .post(verifyToken.verifyUserExist, userController.emailValidation);
-router.route("/sendEmailResetPassword").post(userController.sendEmailResetPassword);
+router
+  .route("/sendEmailResetPassword")
+  .post(userController.sendEmailResetPassword);
 router
   .route("/resetPassword")
   .post(verifyToken.verifyUserExist, userController.resetPassword);
