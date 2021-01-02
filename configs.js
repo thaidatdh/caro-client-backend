@@ -10,6 +10,7 @@ module.exports = {
     data_staff: ["ADMIN", "STAFF"],
   },
   frontend_link: "http://app.data.com/",
+  frontend_admin_link: "http://app.data.com/",
   rank: {
     default: "Beginner",
     data: ["Beginner", "Intermediate", "Advanced", "Expert"],

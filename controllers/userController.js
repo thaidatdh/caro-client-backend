@@ -41,14 +41,53 @@ exports.staff_index = function (req, res) {
 };
 
 // View User
-exports.view = function (req, res) {
-  User.findById(req.params.user_id, function (err, user) {
-    if (err) res.send(err);
+exports.view = async function (req, res) {
+  const option = {
+    isGetGame: true,
+    isGetGamePlayer: true,
+  };
+  try {
+    const user = await User.getById(req.params.user_id, option);
+    const games1 = user.gamesAsP1.map((g) =>
+      Object.assign(
+        {
+          player1: g.player1,
+          player2: g.player2,
+          moves: g.moves,
+          chats: g.chats.map((c) =>
+            Object.assign({ username: c.player.username }, c._doc)
+          ),
+        },
+        g._doc
+      )
+    );
+    const game2 = user.gamesAsP2.map((g) =>
+      Object.assign(
+        {
+          player1: g.player1,
+          player2: g.player2,
+          moves: g.moves,
+          chats: g.chats.map((c) =>
+            Object.assign({ username: c.player.username }, c._doc)
+          ),
+        },
+        g._doc
+      )
+    );
+    let games = games1.concat(game2);
+    games.sort(function (a, b) {
+      return b.created_at - a.created_at;
+    });
+    const data = Object.assign({ games: games }, user._doc);
     res.json({
       message: "User Details",
-      data: user,
+      data: data,
     });
-  });
+  } catch (err) {
+    res.json({
+      message: "Failed",
+    });
+  }
 };
 
 // Update User
@@ -57,15 +96,16 @@ exports.update = function (req, res) {
     if (err) res.send(err);
     const decodedString = Buffer.from(req.body.data, "base64").toString();
     const decoded = JSON.parse(decodedString);
+    const isChangeEmail = decoded.email === user.email;
     user.name = decoded.name ? decoded.name : user.name;
     user.username = decoded.username ? decoded.username : user.username;
     user.password = decoded.password ? decoded.password : user.password;
     user.email = decoded.email ? decoded.email : user.email;
     user.avatar = decoded.avatar ? decoded.avatar : user.avatar;
-    user.win = decoded.win ? decoded.win : user.win;
-    user.lose = decoded.lose ? decoded.lose : user.lose;
-    user.draw = decoded.draw ? decoded.draw : user.draw;
-    user.trophy = decoded.trophy ? decoded.trophy : user.trophy;
+    user.win = decoded.win !== 0 ? decoded.win : user.win;
+    user.lose = decoded.lose !== 0 ? decoded.lose : user.lose;
+    user.draw = decoded.draw !== 0 ? decoded.draw : user.draw;
+    user.trophy = decoded.trophy !== 0 ? decoded.trophy : user.trophy;
     user.rank = Utils.evaluateRank(user.win, user.lose, user.draw, user.trophy);
     user.isBlocked =
       decoded.isBlocked != undefined ? decoded.isBlocked : user.isBlocked;
@@ -77,10 +117,18 @@ exports.update = function (req, res) {
       if (err) res.json(err);
       // if user is found and password is right create a token
       let token = jwt.sign(JSON.stringify(user), config.secret);
+      let isEmailSent = false;
+      if (isChangeEmail) {
+        try {
+          mailer.sendMail(user.email, "Account validation", mailContent);
+          isEmailSent = true;
+        } catch (err) {}
+      }
       res.json({
         message: "User Updated Successfully",
         payload: user,
         token: token,
+        isEmailSent: isEmailSent,
       });
     });
   });
@@ -273,7 +321,9 @@ exports.signup = function (req, res) {
               configs.frontend_link +
               "account-validation/" +
               token;
-            mailer.sendMail(decoded.email, "Account validation", mailContent);
+            try {
+              mailer.sendMail(decoded.email, "Account validation", mailContent);
+            } catch (err) {}
           }
           res.status(200).send({
             success: true,
@@ -704,17 +754,18 @@ exports.addstaff = function (req, res) {
 
       if (!user) {
         let newUser = new User({
-          name: user.name,
           username: decoded.username,
           password: decoded.password,
           email: decoded.email,
           name: decoded.name,
           isBlocked: false,
-          isActive: true,
+          isActive: decoded.isActive,
+          rank: Utils.evaluateRank(0, 0, 0, 0),
           user_type: decoded.user_type
             ? decoded.user_type
             : configs.user_types.default_staff,
         });
+        console.log(newUser);
         newUser.save(function (err) {
           if (err) {
             return res.status(400).send({
@@ -723,19 +774,29 @@ exports.addstaff = function (req, res) {
             });
           }
           let token = jwt.sign(JSON.stringify(newUser), config.secret);
+          if (decoded.email) {
+            const mailContent =
+              "Please click this url to confirm registration at Caro:\n" +
+              configs.frontend_admin_link +
+              "account-validation/" +
+              token;
+            try {
+              mailer.sendMail(decoded.email, "Account validation", mailContent);
+            } catch (err) {}
+          }
           res.status(200).send({
             success: true,
-            message: "Successful created new user.",
+            message: "Successful created new staff.",
             user: newUser,
             token: token,
           });
         });
       } else {
-        return res
-          .status(400)
-          .send({ success: false, message: "Username already exists." });
+        return res.status(400).send({
+          success: false,
+          message: "Username or email already exists.",
+        });
       }
-      send;
     });
   }
 };

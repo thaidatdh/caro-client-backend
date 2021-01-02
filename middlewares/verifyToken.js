@@ -46,7 +46,7 @@ exports.verifyUserExist = (request, response, next) => {
 };
 exports.verifyAdmin = (request, response, next) => {
   let token = request.header("Authorization");
-  if (!token) return response.status(401).send("Access Denied");
+  if (!token) return response.status(401).send("Access Denied 1");
   token = token.replace("Bearer ", "");
   try {
     jwt.verify(token, config.secret, (err, decoded) => {
@@ -55,7 +55,7 @@ exports.verifyAdmin = (request, response, next) => {
         constants.user_types.default === decoded.user_type ||
         decoded.isBlocked
       ) {
-        response.status(401).send({ message: "Access Denied" });
+        response.status(401).send({ message: "Access Denied 2" });
       } else {
         request.user = decoded;
         request.isLoggedIn = true;

@@ -24,6 +24,9 @@ exports.index = async function (req, res) {
         game._doc
       )
     );
+    returnGames.sort(function (a, b) {
+      return b.created_at - a.created_at;
+    });
     res.json({
       status: "success",
       message: "Got Game Successfully!",

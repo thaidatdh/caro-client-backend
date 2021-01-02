@@ -13,11 +13,10 @@ exports.sendMail = async function (email, header, content) {
     },
   });
   var mailOptions = {
-    from: '"CaroTeam" <' + fromEmail.email + '>',
+    from: '"CaroTeam" <' + fromEmail.email + ">",
     to: email,
     subject: "[Caro] " + header,
     text: content,
   };
-
   return transporter.sendMail(mailOptions);
 };
