@@ -70,6 +70,8 @@ exports.socketService = (io) => {
         players: [{ ...value.creator, id: socket.id, isReady: false }],
         spectators: [],
         chats: [], // Chats will not be saved
+        password: value.password,
+        time: value.time,
         // Create Board: no one's turn yet
         //board: utils.createEmptyBoard(),
       };
@@ -158,29 +160,47 @@ exports.socketService = (io) => {
 
     //JOIN ROOM
     socket.on("Join-Room", (value) => {
-      io.to(`${value.roomID}`).emit("Notify-Quick-Play", {
-        roomID: value.roomID,
-        turn: 1,
-      });
-      // Leave global room
-      userWaiting = userWaiting.filter((user) => user._id != value.player._id);
-      socket.leave("Global-Room");
-      io.to("Global-Room").emit("Global-Users", userWaiting);
-      notifyRoomOwnersGlobalUsers(io);
-
       const room = rooms.find((room) => room.roomID === value.roomID);
-      room.num = room.num + 1;
-      room.players.push({ ...value.player, id: socket.id });
+      console.log(value);
+      if (room !== undefined && room.password === value.password) {
+        socket.emit("Join-Room-Callback", {
+          success: true,
+          room: {
+            roomID: room.roomID,
+            time: room.time,
+            password: room.password,
+          },
+        });
+        io.to(`${value.roomID}`).emit("Notify-Quick-Play", {
+          roomID: value.roomID,
+          turn: 1,
+        });
 
-      socket.to(value.roomID).emit("Second-Player", value.player);
-      socket.join(value.roomID);
-      console.log(userWaiting.filter((e) => e.id === value.roomID));
-      socket.emit("First-Player", room.players[0]);
+        room.num = room.num + 1;
+        room.players.push({ ...value.player, id: socket.id });
 
-      io.to(socket.id).emit("Private-Room-Chat-Response", room.chats);
-      // Board
-      //room.board.turn = room.players[0]._id;
-      io.to(`${value.roomID}`).emit("Room-Owner", room.creator._id);
+        // Leave global room
+        userWaiting = userWaiting.filter(
+          (user) => user._id != value.player._id
+        );
+        socket.leave("Global-Room");
+        io.to("Global-Room").emit("Global-Users", userWaiting);
+        notifyRoomOwnersGlobalUsers(io);
+
+        socket.to(value.roomID).emit("Second-Player", value.player);
+        socket.join(value.roomID);
+        console.log(userWaiting.filter((e) => e.id === value.roomID));
+        socket.emit("First-Player", room.players[0]);
+
+        io.to(socket.id).emit("Private-Room-Chat-Response", room.chats);
+        // Board
+        //room.board.turn = room.players[0]._id;
+        io.to(`${value.roomID}`).emit("Room-Owner", room.creator._id);
+      } else {
+        socket.emit("Join-Room-Callback", {
+          success: false,
+        });
+      }
     });
 
     // READY GAME
@@ -498,11 +518,15 @@ exports.socketService = (io) => {
       //Search
       for (let i = 0; i < rooms.length; i++) {
         if (rooms[i].status === utils.roomStatus.waiting) {
-          if (rooms[i].creator.trophy === value.creator.trophy) {
+          if (
+            rooms[i].creator.trophy === value.creator.trophy &&
+            rooms[i].password === ""
+          ) {
             check = true;
             io.to(`${rooms[i].roomID}`).emit("Notify-Quick-Play", {
               roomID: rooms[i].roomID,
               turn: 1,
+              time: rooms[i].time,
             });
             // Leave global room
             userWaiting = userWaiting.filter(
@@ -516,7 +540,11 @@ exports.socketService = (io) => {
             room.num = room.num + 1;
             room.players.push({ ...value.creator, id: socket.id });
 
-            socket.emit("Searched-Room", { roomID: rooms[i].roomID, turn: 2 });
+            socket.emit("Searched-Room", {
+              roomID: rooms[i].roomID,
+              turn: 2,
+              time: rooms[i].time,
+            });
             socket.to(rooms[i].roomID).emit("Second-Player", value.creator);
             socket.join(rooms[i].roomID);
             console.log(userWaiting.filter((e) => e.id === rooms[i].roomID));
@@ -557,6 +585,8 @@ exports.socketService = (io) => {
           players: [{ ...value.creator, id: socket.id, isReady: false }],
           spectators: [],
           chats: [], // Chats will not be saved
+          time: 180000, //time default
+          password: "",
           // Create Board: no one's turn yet
           //board: utils.createEmptyBoard(),
         };
@@ -564,6 +594,20 @@ exports.socketService = (io) => {
         io.to(`${newRoomID}`).emit("Room-Owner-Response", value.creator._id);
         io.to("Global-Room").emit("Playing-Room", rooms);
       }
+    });
+
+    socket.on("Cancel-Room", (value) => {
+      rooms = rooms.filter((e) => e.roomID !== value._id);
+      socket.leave(value._id);
+      userWaiting.push({
+        id: socket.id,
+        _id: value._id,
+        username: value.username,
+      });
+      socket.join("Global-Room");
+      io.to("Global-Room").emit("Playing-Room", rooms);
+      io.to("Global-Room").emit("Global-Users", userWaiting);
+      notifyRoomOwnersGlobalUsers(io);
     });
   });
 };
