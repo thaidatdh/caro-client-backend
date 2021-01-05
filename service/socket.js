@@ -12,6 +12,7 @@ let userWaiting = [];
 let rooms = [];
 let userPlaying = [];
 let interval;
+let disconnectedPlayers = [];
 const boardSize = utils.boardSize;
 
 /**Connection**/
@@ -25,18 +26,40 @@ exports.socketService = (io) => {
     //Chat.deleteAll();
     //ADD USER TO GLOBAL ROOM
     socket.on("Global-Room", (value) => {
-      if (!userWaiting.find((user) => user._id == value.userID)) {
-        userWaiting.push({
-          id: socket.id,
-          _id: value.userID,
-          username: value.username,
+      // Reconnect
+      const disconnectedPlayer = disconnectedPlayers.filter(
+        (disconnected) => disconnected.playerID === value.userID
+      );
+      if (disconnectedPlayer.length > 0) {
+        io.to(socket.id).emit("Reconnect-Response", disconnectedPlayer[0].room);
+      } else {
+        // Check if user is already in a room
+        const room = rooms.find((room) => {
+          let player;
+          player = room.players.find((player) => player._id === value.userID);
+          if (player) {
+            return room;
+          }
+          player = room.spectators.find(
+            (spectator) => spectator._id === value.userID
+          );
+          if (player) {
+            return room;
+          }
         });
+        if (!userWaiting.find((user) => user._id == value.userID) && !room) {
+          userWaiting.push({
+            id: socket.id,
+            _id: value.userID,
+            username: value.username,
+          });
+          socket.join("Global-Room");
+          io.to("Global-Room").emit("Global-Users", userWaiting);
+          notifyRoomOwnersGlobalUsers(io);
+          // Overkill
+          io.to("Global-Room").emit("Playing-Room", rooms);
+        }
       }
-      socket.join("Global-Room");
-      io.to("Global-Room").emit("Global-Users", userWaiting);
-      notifyRoomOwnersGlobalUsers(io);
-      // Overkill
-      io.to("Global-Room").emit("Playing-Room", rooms);
     });
 
     //CHAT ALL IN GLOBAL ROOM
@@ -63,11 +86,18 @@ exports.socketService = (io) => {
       console.log(`Room ${newRoomID} created`);
       const newRoom = {
         roomID: newRoomID,
-        creator: { ...value.creator, id: socket.id },
+        creator: { ...value.creator, id: socket.id, isConnected: true },
         title: value.title,
         num: 1,
         status: utils.roomStatus.waiting,
-        players: [{ ...value.creator, id: socket.id, isReady: false }],
+        players: [
+          {
+            ...value.creator,
+            id: socket.id,
+            isReady: false,
+            isConnected: true,
+          },
+        ],
         spectators: [],
         chats: [], // Chats will not be saved
         password: value.password,
@@ -148,6 +178,9 @@ exports.socketService = (io) => {
               socket
                 .to(`${rooms[i].roomID}`)
                 .emit("Leave-Room-Player", { player: socket.id });
+              socket
+                .to(`${rooms[i].roomID}`)
+                .emit("Leave-Room-Player-Spec", rooms[i].players);
             }
           } else {
             temp.push(rooms[i]);
@@ -176,26 +209,32 @@ exports.socketService = (io) => {
           turn: 1,
         });
 
-        room.num = room.num + 1;
-        room.players.push({ ...value.player, id: socket.id });
-
         // Leave global room
         userWaiting = userWaiting.filter(
           (user) => user._id != value.player._id
         );
-        socket.leave("Global-Room");
-        io.to("Global-Room").emit("Global-Users", userWaiting);
-        notifyRoomOwnersGlobalUsers(io);
+        room.num = room.num + 1;
+        room.players.push({
+          ...value.player,
+          id: socket.id,
+          isConnected: true,
+        });
 
         socket.to(value.roomID).emit("Second-Player", value.player);
         socket.join(value.roomID);
         console.log(userWaiting.filter((e) => e.id === value.roomID));
+        //io.emit("First-Player", room.players[0]);
         socket.emit("First-Player", room.players[0]);
 
         io.to(socket.id).emit("Private-Room-Chat-Response", room.chats);
+        // Notify new joined player about all the spectators
+        io.to(value.roomID).emit("Spectator-Room-Response", room.spectators);
         // Board
         //room.board.turn = room.players[0]._id;
         io.to(`${value.roomID}`).emit("Room-Owner", room.creator._id);
+
+        // Notify all spectators
+        io.to(value.roomID).emit("Players-Spec-Room-Response", room.players);
       } else {
         socket.emit("Join-Room-Callback", {
           success: false,
@@ -225,6 +264,9 @@ exports.socketService = (io) => {
           room.status = utils.roomStatus.playing;
           io.to(value.roomID).emit("Board-Response", room.board);
           io.to("Global-Room").emit("Playing-Room", rooms);
+
+          // Notify to spectators the game about to start
+          socket.to(value.roomID).emit("Game-Start-Spec-Response", room.board);
         }
       }
     });
@@ -393,10 +435,16 @@ exports.socketService = (io) => {
             rooms[i].players = rooms[i].players.filter(
               (player) => player._id != value.player._id
             );
+            rooms[i].players.forEach((player) => {
+              player.isReady = false;
+            });
             temp.push(rooms[i]);
             socket
               .to(`${rooms[i].roomID}`)
-              .emit("Leave-Room-Player", { player: socket.id });
+              .emit("Leave-Room-Player", value.player._id);
+            socket
+              .to(`${rooms[i].roomID}`)
+              .emit("Leave-Room-Player-Spec", rooms[i].players);
           }
         } else {
           temp.push(rooms[i]);
@@ -449,7 +497,87 @@ exports.socketService = (io) => {
       else {
         const temp = [];
         for (var i = 0; i < rooms.length; i++) {
-          if (
+          let player, otherPlayer, type;
+          if (rooms[i].players[0] && rooms[i].players[0].id === socket.id) {
+            player = rooms[i].players[0];
+            otherPlayer = rooms[i].players[1];
+            type = 0;
+          } else if (
+            rooms[i].players[1] &&
+            rooms[i].players[1].id === socket.id
+          ) {
+            player = rooms[i].players[1];
+            otherPlayer = rooms[i].players[0];
+            type = 1;
+          }
+          if (player) {
+            player.isConnected = false;
+            // Game ongoing
+            if (
+              rooms[i].board &&
+              rooms[i].board.squares.length > 0 &&
+              !rooms[i].board.winner
+            ) {
+              // 1 player is disconnected
+              if (otherPlayer.isConnected) {
+                const totalMove = rooms[i].board.total;
+                rooms[i].board.turnTimeUsed =
+                  totalMove > 0
+                    ? Date.now() -
+                      rooms[i].board.timeStart -
+                      rooms[i].board.moves[totalMove - 1].time
+                    : 0;
+                disconnectedPlayers.push({
+                  playerID: player._id,
+                  room: {
+                    roomID: rooms[i].roomID,
+                    title: rooms[i].title,
+                    creator: rooms[i].creator.username,
+                  },
+                  type: type,
+                });
+                temp.push(rooms[i]);
+                io.to(rooms[i].roomID).emit(
+                  "Player-Disconnect-Response",
+                  player
+                );
+              }
+              // 2 player is disconnected => draw
+              else {
+                disconnectedPlayers = disconnectedPlayers.filter(
+                  (disconnected) => disconnected.playerID != otherPlayer._id
+                );
+                // Save Game
+                await saveGame(io, rooms[i], "None", {
+                  toPlayer1: false,
+                  toPlayer2: false,
+                });
+              }
+            } else {
+              // Room owner out => close room
+              if (player.id === rooms[i].creator.id) {
+                socket
+                  .to(`${rooms[i].roomID}`)
+                  .emit("Close-Room", rooms[i].roomID);
+              } else {
+                rooms[i].players.forEach((player) => {
+                  player.isReady = false;
+                });
+                temp.push(rooms[i]);
+                socket
+                  .to(`${rooms[i].roomID}`)
+                  .emit("Leave-Room-Player", { player: player.id });
+                socket
+                  .to(`${rooms[i].roomID}`)
+                  .emit("Leave-Room-Player-Spec", rooms[i].players);
+              }
+            }
+          } else {
+            temp.push(rooms[i]);
+          }
+          rooms = temp;
+          io.to("Global-Room").emit("Playing-Room", rooms);
+          /*if (
             (rooms[i].players[0] && rooms[i].players[0].id === socket.id) ||
             (rooms[i].players[1] && rooms[i].players[1].id === socket.id)
           ) {
@@ -504,14 +632,15 @@ exports.socketService = (io) => {
                 .emit("Leave-Room-Player", { player: socket.id });
             }
           } else {
-            temp.push(rooms[i]);
-          }
+            //temp.push(rooms[i]);
+          }*/
         }
-        rooms = temp;
-        io.to("Global-Room").emit("Playing-Room", rooms);
+        //rooms = temp;
+        //io.to("Global-Room").emit("Playing-Room", rooms);
       }
       console.log("disconnect: " + socket.id);
     });
+
     //QUICK PLAY
     socket.on("Quick-Play", (value) => {
       let check = false;
@@ -538,7 +667,11 @@ exports.socketService = (io) => {
 
             const room = rooms.find((room) => room.roomID === rooms[i].roomID);
             room.num = room.num + 1;
-            room.players.push({ ...value.creator, id: socket.id });
+            room.players.push({
+              ...value.creator,
+              id: socket.id,
+              isConnected: true,
+            });
 
             socket.emit("Searched-Room", {
               roomID: rooms[i].roomID,
@@ -551,9 +684,17 @@ exports.socketService = (io) => {
             socket.emit("First-Player", room.players[0]);
 
             io.to(socket.id).emit("Private-Room-Chat-Response", room.chats);
+            // Notify new joined player about all the spectators
+            io.to(socket.id).emit("Spectator-Room-Response", room.spectators);
             // Board
             //room.board.turn = room.players[0]._id;
             // io.to(`${rooms[i].roomID}`).emit("Room-Owner", room.creator._id);
+
+            // Notify all spectators
+            io.to(value.roomID).emit(
+              "Players-Spec-Room-Response",
+              room.players
+            );
           }
         }
       }
@@ -578,11 +719,18 @@ exports.socketService = (io) => {
         console.log(`Room ${newRoomID} created`);
         const newRoom = {
           roomID: newRoomID,
-          creator: { ...value.creator, id: socket.id },
+          creator: { ...value.creator, id: socket.id, isConnected: true },
           title: value.title,
           num: 1,
           status: utils.roomStatus.waiting,
-          players: [{ ...value.creator, id: socket.id, isReady: false }],
+          players: [
+            {
+              ...value.creator,
+              id: socket.id,
+              isReady: false,
+              isConnected: true,
+            },
+          ],
           spectators: [],
           chats: [], // Chats will not be saved
           time: 180000, //time default
@@ -611,6 +759,190 @@ exports.socketService = (io) => {
     });
   });
 };
+// RECONNECT
+socket.on("Reconnect", (value) => {
+  // Leave global room
+  userWaiting = userWaiting.filter((user) => user._id != value.player._id);
+  socket.leave("Global-Room");
+  io.to("Global-Room").emit("Global-Users", userWaiting);
+  notifyRoomOwnersGlobalUsers(io);
+
+  //
+  disconnectedPlayers = disconnectedPlayers.filter(
+    (disconnected) => disconnected.playerID != value.player._id
+  );
+
+  const room = rooms.find((room) => room.roomID === value.roomID);
+  let player, otherPlayer;
+  if (room.players[0]._id === value.player._id) {
+    player = room.players[0];
+    otherPlayer = room.players[1];
+  } else {
+    player = room.players[1];
+    otherPlayer = room.players[0];
+  }
+  player.id = socket.id;
+  player.isConnected = true;
+  socket.join(value.roomID);
+  io.to(socket.id).emit("Second-Player", otherPlayer);
+
+  io.to(socket.id).emit("Private-Room-Chat-Response", room.chats);
+  // Notify new joined player about all the spectators
+  io.to(socket.id).emit("Spectator-Room-Response", room.spectators);
+
+  // Reconnect notification
+  io.to(room.roomID).emit("Player-Reconnect-Response", player);
+  // Board
+  io.to(room.roomID).emit("Board-Response", room.board);
+  io.to(`${value.roomID}`).emit("Room-Owner", room.creator._id);
+
+  room.board.turnTimeUsed = 0;
+});
+
+// DISCONNECTED PLAYER LOSE
+socket.on("Disconnected-Player-Lose", async (value) => {
+  const temp = [];
+  for (var i = 0; i < rooms.length; i++) {
+    if (rooms[i].roomID === value.roomID) {
+      // Declare winner
+      if (
+        rooms[i].board &&
+        rooms[i].board.squares.length > 0 &&
+        !rooms[i].board.winner
+      ) {
+        rooms[i].board.turn = 0;
+        rooms[i].status = utils.roomStatus.waiting;
+        let winner = "",
+          toPlayer1 = false,
+          toPlayer2 = false,
+          loserPlayer;
+        if (rooms[i].players[0].id === socket.id) {
+          rooms[i].players[0].isReady = false;
+          winner = "X";
+          toPlayer1 = true;
+          loserPlayer = rooms[i].players[1];
+        } else if (rooms[i].players[1].id === socket.id) {
+          rooms[i].players[1].isReady = false;
+          winner = "O";
+          toPlayer2 = true;
+          loserPlayer = rooms[i].players[0];
+        }
+        rooms[i].board.winner = winner;
+        io.to(`${rooms[i].roomID}`).emit("Declare-Winner-Response", {
+          winner: winner,
+          winnerList: [0, 1, 2, 3, 4],
+        });
+
+        disconnectedPlayers = disconnectedPlayers.filter(
+          (disconnected) => disconnected.playerID != loserPlayer._id
+        );
+
+        // Save Game
+        await saveGame(io, rooms[i], winner, {
+          toPlayer1: toPlayer1,
+          toPlayer2: toPlayer2,
+        });
+      }
+
+      // Room owner out => close room
+      if (value.player._id !== rooms[i].creator._id) {
+        io.to(`${rooms[i].roomID}`).emit("Close-Room", rooms[i].roomID);
+      } else {
+        rooms[i].num--;
+        let remainingP, loser;
+        if (rooms[i].players[0]._id === value.player._id) {
+          remainingP = rooms[i].players[0];
+          loser = rooms[i].players[1];
+        } else {
+          remainingP = rooms[i].players[1];
+          loser = rooms[i].players[0];
+        }
+        remainingP.isReady = false;
+        rooms[i].players = [remainingP];
+        temp.push(rooms[i]);
+        io.to(rooms[i].roomID).emit("Leave-Room-Player", { player: loser._id });
+        io.to(rooms[i].roomID).emit("Leave-Room-Player-Spec", rooms[i].players);
+      }
+    } else {
+      temp.push(rooms[i]);
+    }
+  }
+  rooms = temp;
+  io.to("Global-Room").emit("Playing-Room", rooms);
+});
+
+// SPECTATOR
+// SPEC ROOM
+socket.on("Spec-Room", (value) => {
+  // Leave global room
+  userWaiting = userWaiting.filter((user) => user._id != value.player._id);
+  socket.leave("Global-Room");
+  io.to("Global-Room").emit("Global-Users", userWaiting);
+  notifyRoomOwnersGlobalUsers(io);
+
+  const room = rooms.find((room) => room.roomID === value.roomID);
+  room.spectators.push({ ...value.player, id: socket.id, isConnected: true });
+
+  socket.join(value.roomID);
+
+  // Notify all players in the room about new spectator
+  io.to(room.roomID).emit("Spectator-Room-Response", room.spectators);
+  // Notify the spectator all the chats in room & players
+  socket.emit("Private-Room-Chat-Response", room.chats);
+  socket.emit("Players-Spec-Room-Response", room.players);
+  if (room.board) {
+    socket.emit("Board-Response", room.board);
+  }
+
+  // Board
+  //room.board.turn = room.players[0]._id;
+  io.to(`${value.roomID}`).emit("Room-Owner", room.creator._id);
+});
+
+//LEAVE SPEC ROOM
+socket.on("Leave-Spec-Room", async (value) => {
+  const room = rooms.find((room) => room.roomID === value.roomID);
+  if (room) {
+    room.spectators = room.spectators.filter(
+      (spectator) => spectator._id != value.player._id
+    );
+    socket.to(room.roomID).emit("Spectator-Room-Response", room.spectators);
+    // Join global room
+    userWaiting.push({
+      id: socket.id,
+      _id: value.player._id,
+      username: value.player.username,
+    });
+    socket.to(`${value.roomID}`).emit("Global-Users", userWaiting);
+    socket.leave(`${value.roomID}`);
+    socket.join("Global-Room");
+    io.to("Global-Room").emit("Global-Users", userWaiting);
+    notifyRoomOwnersGlobalUsers(io);
+  }
+});
+
+//JOIN ROOM FROM SPEC
+socket.on("Join-Room-From-Spec", (value) => {
+  const room = rooms.find((room) => room.roomID === value.roomID);
+  room.num = room.num + 1;
+  room.players.push({ ...value.player, id: socket.id, isConnected: true });
+
+  socket.to(value.roomID).emit("Second-Player", value.player);
+  socket.emit("First-Player", room.players[0]);
+
+  io.to(socket.id).emit("Private-Room-Chat-Response", room.chats);
+  // Notify new joined player about all the spectators
+  room.spectators = room.spectators.filter(
+    (spectator) => spectator._id !== value.player._id
+  );
+  io.to(value.roomID).emit("Spectator-Room-Response", room.spectators);
+  // Board
+  //room.board.turn = room.players[0]._id;
+  io.to(`${value.roomID}`).emit("Room-Owner", room.creator._id);
+
+  // Notify all spectators
+  io.to(value.roomID).emit("Players-Spec-Room-Response", room.players);
+});
 
 const saveGame = (io, room, winner, option) => {
   return new Promise(async (resolve, reject) => {
@@ -708,6 +1040,7 @@ const saveGame = (io, room, winner, option) => {
         io.to(room.players[1].id).emit("Update-User-Response", room.players[0]);
         io.to(room.players[1].id).emit("Update-User-Response", room.players[1]);
       }
+      io.to(room.roomID).emit("Players-Spec-Room-Response", room.players);
       io.to(room.roomID).emit("Loading-Response", false);
       resolve(newGame);
     } catch (err) {
