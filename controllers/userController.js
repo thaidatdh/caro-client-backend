@@ -102,10 +102,10 @@ exports.update = function (req, res) {
     user.password = decoded.password ? decoded.password : user.password;
     user.email = decoded.email ? decoded.email : user.email;
     user.avatar = decoded.avatar ? decoded.avatar : user.avatar;
-    user.win = decoded.win !== 0 ? decoded.win : user.win;
-    user.lose = decoded.lose !== 0 ? decoded.lose : user.lose;
-    user.draw = decoded.draw !== 0 ? decoded.draw : user.draw;
-    user.trophy = decoded.trophy !== 0 ? decoded.trophy : user.trophy;
+    user.win = decoded.win ? decoded.win : user.win;
+    user.lose = decoded.lose ? decoded.lose : user.lose;
+    user.draw = decoded.draw ? decoded.draw : user.draw;
+    user.trophy = decoded.trophy ? decoded.trophy : user.trophy;
     user.rank = Utils.evaluateRank(user.win, user.lose, user.draw, user.trophy);
     user.isBlocked =
       decoded.isBlocked != undefined ? decoded.isBlocked : user.isBlocked;
