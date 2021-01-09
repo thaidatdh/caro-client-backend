@@ -112,6 +112,7 @@ exports.update = function (req, res) {
     user.isActive =
       decoded.isActive != undefined ? decoded.isActive : user.isActive;
     user.user_type = decoded.user_type ? decoded.user_type : user.user_type;
+
     //save and check errors
     user.save(function (err) {
       if (err) res.json(err);
@@ -194,7 +195,7 @@ exports.sendEmailResetPassword = function (req, res) {
   User.findOne({ email: req.body.email }, function (err, user) {
     if (err) res.send(err);
     let token = jwt.sign(JSON.stringify(user), config.secret);
-    if (user.email) {
+    if (user) {
       const mailContent =
         "Please click this url to reset password at Caro:\n" +
         configs.frontend_link +
