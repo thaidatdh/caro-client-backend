@@ -102,16 +102,17 @@ exports.update = function (req, res) {
     user.password = decoded.password ? decoded.password : user.password;
     user.email = decoded.email ? decoded.email : user.email;
     user.avatar = decoded.avatar ? decoded.avatar : user.avatar;
-    user.win = decoded.win !== 0 ? decoded.win : user.win;
-    user.lose = decoded.lose !== 0 ? decoded.lose : user.lose;
-    user.draw = decoded.draw !== 0 ? decoded.draw : user.draw;
-    user.trophy = decoded.trophy !== 0 ? decoded.trophy : user.trophy;
+    user.win = decoded.win ? decoded.win : user.win;
+    user.lose = decoded.lose ? decoded.lose : user.lose;
+    user.draw = decoded.draw ? decoded.draw : user.draw;
+    user.trophy = decoded.trophy ? decoded.trophy : user.trophy;
     user.rank = Utils.evaluateRank(user.win, user.lose, user.draw, user.trophy);
     user.isBlocked =
       decoded.isBlocked != undefined ? decoded.isBlocked : user.isBlocked;
     user.isActive =
       decoded.isActive != undefined ? decoded.isActive : user.isActive;
     user.user_type = decoded.user_type ? decoded.user_type : user.user_type;
+
     //save and check errors
     user.save(function (err) {
       if (err) res.json(err);
@@ -194,7 +195,7 @@ exports.sendEmailResetPassword = function (req, res) {
   User.findOne({ email: req.body.email }, function (err, user) {
     if (err) res.send(err);
     let token = jwt.sign(JSON.stringify(user), config.secret);
-    if (user.email) {
+    if (user) {
       const mailContent =
         "Please click this url to reset password at Caro:\n" +
         configs.frontend_link +
