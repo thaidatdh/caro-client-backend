@@ -107,6 +107,6 @@ module.exports.getList = (idOwner) => {
       { player1ID: new ObjectId(idOwner) },
       { player2ID: new ObjectId(idOwner) },
     ],
-  });
+  }).sort("-created_at");
   return promise.exec();
 };

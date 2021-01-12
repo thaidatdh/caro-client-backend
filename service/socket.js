@@ -153,7 +153,7 @@ exports.socketService = (io) => {
               rooms[i].board.winner = winner;
               io.to(`${rooms[i].roomID}`).emit("Declare-Winner-Response", {
                 winner: winner,
-                winnerList: [0, 1, 2, 3, 4],
+                winnerList: [],
               });
 
               // Save Game
@@ -344,7 +344,7 @@ exports.socketService = (io) => {
           io.to("Global-Room").emit("Playing-Room", rooms);
           io.to(value.roomID).emit("Declare-Winner-Response", {
             winner: currentPlayer,
-            winnerList: [0, 1, 2, 3, 4],
+            winnerList: winner.map((cell) => cell.row * boardSize + cell.col),
           });
           // Save Game
           saveGame(io, room, currentPlayer, {
@@ -392,7 +392,7 @@ exports.socketService = (io) => {
           room.board.winner = winner;
           io.to(value.roomID).emit("Declare-Winner-Response", {
             winner: winner,
-            winnerList: [0, 1, 2, 3, 4],
+            winnerList: [],
           });
 
           // Save Game
@@ -426,7 +426,7 @@ exports.socketService = (io) => {
             rooms[i].board.winner = winner;
             io.to(`${rooms[i].roomID}`).emit("Declare-Winner-Response", {
               winner: winner,
-              winnerList: [0, 1, 2, 3, 4],
+              winnerList: [],
             });
 
             // Save Game
@@ -839,7 +839,7 @@ exports.socketService = (io) => {
             rooms[i].board.winner = winner;
             io.to(`${rooms[i].roomID}`).emit("Declare-Winner-Response", {
               winner: winner,
-              winnerList: [0, 1, 2, 3, 4],
+              winnerList: [],
             });
 
             disconnectedPlayers = disconnectedPlayers.filter(
