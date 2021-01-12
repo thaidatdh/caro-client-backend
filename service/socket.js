@@ -330,6 +330,7 @@ exports.socketService = (io) => {
           board.col,
           board.squares
         );
+
         if (winner) {
           room.board.turn = 0;
           room.status = utils.roomStatus.waiting;
