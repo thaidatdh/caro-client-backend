@@ -81,7 +81,7 @@ module.exports.getOne = function (idStr, option) {
   }
   // Populate Moves
   if (option.isGetMoves) {
-    promise.populate("moves");
+    promise.populate({path: 'moves', options: { sort: { 'number': 1 } } });
   }
   // Populate Chats
   if (option.isGetChats) {

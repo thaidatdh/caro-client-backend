@@ -5,6 +5,7 @@ let gameController = require("../controllers/gameController");
 
 // User routes
 router.route("/history").get(verifyToken.verifyUser, gameController.history);
+router.route("/historyStaff").get(verifyToken.verifyUser, gameController.historyStaff);
 
 router
   .route("/:game_id")
