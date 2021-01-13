@@ -356,6 +356,7 @@ exports.socketService = (io) => {
         else if (board.total === board.squares.length) {
           room.board.turn = 0;
           room.status = utils.roomStatus.waiting;
+          room.board.winner = "None";
           if (room.players[0]) {
             room.players[0].isReady = false;
           }
@@ -366,6 +367,11 @@ exports.socketService = (io) => {
           io.to(value.roomID).emit("Declare-Winner-Response", {
             winner: "None",
             winnerList: [],
+          });
+          // Save Game
+          saveGame(io, room, "None", {
+            toPlayer1: true,
+            toPlayer2: true,
           });
         } else {
           board.turn = room.players[board.total % 2]._id;

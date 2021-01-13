@@ -115,10 +115,12 @@ module.exports.setResult = (query, option) => {
   if (option.lose > 0) {
     obj.lose = option.lose;
   }
-  if (option.trophy >= 0) {
-    obj.trophy = option.trophy;
-  } else {
-    obj.trophy = 0;
+  if (option.trophy && option.trophy >= 0) {
+    if (option.trophy >= 0)
+      obj.trophy = option.trophy;
+    else {
+      obj.trophy = 0;
+    }
   }
 
   return User.findOneAndUpdate(query, obj).exec();
