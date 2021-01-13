@@ -96,7 +96,7 @@ exports.update = function (req, res) {
     if (err) res.send(err);
     const decodedString = Buffer.from(req.body.data, "base64").toString();
     const decoded = JSON.parse(decodedString);
-    const isChangeEmail = decoded.email === user.email;
+    const isChangeEmail = decoded.email !== user.email;
     user.name = decoded.name ? decoded.name : user.name;
     user.username = decoded.username ? decoded.username : user.username;
     user.password = decoded.password ? decoded.password : user.password;
@@ -119,11 +119,17 @@ exports.update = function (req, res) {
       // if user is found and password is right create a token
       let token = jwt.sign(JSON.stringify(user), config.secret);
       let isEmailSent = false;
+      console.log(isChangeEmail);
       if (isChangeEmail) {
         try {
-          mailer.sendMail(user.email, "Account validation", mailContent);
+          const mailContent =
+            "Please click this url to confirm registration at Caro:\n" +
+            configs.frontend_link +
+            "account-validation/" +
+            token;
+          mailer.sendMail(decoded.email, "Account validation", mailContent);
           isEmailSent = true;
-        } catch (err) {}
+        } catch (err) { console.log(err)}
       }
       res.json({
         message: "User Updated Successfully",
@@ -421,7 +427,6 @@ exports.loginGoogle = function (req, res) {
         msg: "Error Google",
       });
     }
-
     if (!user) {
       let newUser = new User({
         username: req.body.username,
